@@ -15,10 +15,13 @@ ENV/
 # Local configuration
 .env
 
-# Data & outputs
-models/
-output/
-video/
+# Data & outputs (keep folders, ignore contents)
+models/*
+!models/.gitkeep
+output/*
+!output/.gitkeep
+video/*
+!video/.gitkeep
 
 # Editor/OS
 .vscode/
