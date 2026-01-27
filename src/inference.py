@@ -19,7 +19,7 @@ def load_config():
     load_dotenv()
     return {
         "model_type": os.getenv("MODEL_TYPE", "pt").lower(),
-        "model_pt_path": os.getenv("MODEL_PT_PATH", "models/best.pt"),
+        "model_pt_path": os.getenv("MODEL_PT_PATH", "models/pt/best.pt"),
         "model_openvino_dir": os.getenv("MODEL_OPENVINO_DIR", "models/openvino"),
         "video_folder": os.getenv("VIDEO_FOLDER", "vid"),
         "output_folder": os.getenv("OUTPUT_FOLDER", "output"),

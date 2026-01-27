@@ -1,5 +1,7 @@
 # YOLO Video Inference
 
+**Version: v1 (1.0.0)**
+
 **By Hafiz Alfariz**
 
 A simple YOLO-based video inference pipeline that runs object detection on all videos in a folder, with optional tracking and OpenVINO export support.
@@ -19,7 +21,8 @@ Dependencies are defined in [pyproject.toml](pyproject.toml).
 ## Project Structure
 ```
 models/
-  best.pt
+  pt/
+    best.pt
   openvino/
 output/
   detect/
@@ -51,7 +54,7 @@ The pipeline is configured via [.nv](.env).
 | Key | Description | Default |
 | --- | --- | --- |
 | `MODEL_TYPE` | `pt` or `openvino` | `pt` |
-| `MODEL_PT_PATH` | Path to `.pt` model | `models/best.pt` |
+| `MODEL_PT_PATH` | Path to `.pt` model | `models/pt/best.pt` |
 | `MODEL_OPENVINO_DIR` | OpenVINO model directory | `models/openvino` |
 | `VIDEO_FOLDER` | Input videos folder | `video` |
 | `OUTPUT_FOLDER` | Output base folder | `output` |
@@ -93,6 +96,7 @@ MODEL_OPENVINO_DIR=models/openvino
 ## Notes
 - If no video files are found in [video](video), the script exits gracefully.
 - Supported video formats: `.mp4`, `.avi`, `.mov`, `.mkv` (case-insensitive).
+- Model artifacts are excluded from Git: put `.pt` files in [models/pt](models/pt) and OpenVINO exports in [models/openvino](models/openvino).
 
 ## Author
 Hafiz Alfariz

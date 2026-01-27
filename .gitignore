@@ -18,6 +18,8 @@ ENV/
 # Data & outputs (keep folders, ignore contents)
 models/*
 !models/.gitkeep
+!models/pt/.gitkeep
+!models/openvino/.gitkeep
 output/*
 !output/.gitkeep
 video/*
