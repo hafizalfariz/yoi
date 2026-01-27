@@ -110,12 +110,14 @@ def run_inference(config):
     console.print(f"Loading model from [bold]{model_path}[/bold]...")
     model = YOLO(model_path)
     
-    # Collect all video files in the input folder
-    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.MP4', '.AVI', '.MOV', '.MKV']
-    video_files = []
-    
-    for ext in video_extensions:
-        video_files.extend(Path(video_folder).glob(f'*{ext}'))
+    # Collect all video files in the input folder (dedupe on case-insensitive filesystems)
+    video_extensions = {".mp4", ".avi", ".mov", ".mkv"}
+    video_files = [
+        p
+        for p in Path(video_folder).glob("*")
+        if p.is_file() and p.suffix.lower() in video_extensions
+    ]
+    video_files = sorted({p.resolve() for p in video_files})
     
     if not video_files:
         console.print(f"No video files found in folder {video_folder}")
@@ -253,12 +255,14 @@ def run_inference_with_tracking(config):
     console.print(f"Loading model from [bold]{model_path}[/bold]...")
     model = YOLO(model_path)
     
-    # Collect all video files
-    video_extensions = ['.mp4', '.avi', '.mov', '.mkv', '.MP4', '.AVI', '.MOV', '.MKV']
-    video_files = []
-    
-    for ext in video_extensions:
-        video_files.extend(Path(video_folder).glob(f'*{ext}'))
+    # Collect all video files (dedupe on case-insensitive filesystems)
+    video_extensions = {".mp4", ".avi", ".mov", ".mkv"}
+    video_files = [
+        p
+        for p in Path(video_folder).glob("*")
+        if p.is_file() and p.suffix.lower() in video_extensions
+    ]
+    video_files = sorted({p.resolve() for p in video_files})
     
     if not video_files:
         console.print(f"No video files found in folder {video_folder}")
