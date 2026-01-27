@@ -62,6 +62,11 @@ The pipeline is configured via [.nv](.env).
 | `IOU` | Detection IOU threshold | `0.45` |
 | `TRACK_CONF` | Tracking confidence | `0.5` |
 | `TRACK_IOU` | Tracking IOU threshold | `0.5` |
+| `SHOW_LIVE` | Enable live preview window | `true` |
+| `SHOW_LIVE_WIDTH` | Preview window width (0 = auto) | `1280` |
+| `SHOW_LIVE_HEIGHT` | Preview window height (0 = auto) | `720` |
+| `SHOW_LIVE_FULLSCREEN` | Fullscreen preview | `false` |
+| `SHOW_LIVE_STOP_ON_CLOSE` | Stop processing when preview closed | `true` |
 | `EXPORT_IMGSZ` | Export image size | `640` |
 | `EXPORT_HALF` | FP16 export | `false` |
 
@@ -80,6 +85,11 @@ You will be prompted to choose:
 **Outputs**:
 - Standard detection results go to [output/detect](output/detect)
 - Tracking results go to [output/track](output/track)
+
+**Live preview controls**:
+- Press **v** to show/hide the preview window while processing.
+- Press **q** to stop processing.
+- Closing/minimizing the preview window hides it; processing continues. Press **v** to show it again.
 
 ### 3) Export to OpenVINO (optional)
 ```bash
