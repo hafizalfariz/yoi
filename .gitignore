@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.pytest_cache/
+
+# Environments
+.venv/
+venv/
+ENV/
+
+# Local configuration
+.env
+
+# Data & outputs
+models/
+output/
+video/
+
+# Editor/OS
+.vscode/
+.DS_Store
+Thumbs.db
+
+# UV
+.uv/
+uv.lock

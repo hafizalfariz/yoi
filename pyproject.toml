@@ -1,0 +1,12 @@
+[project]
+name = "inference"
+version = "0.1.0"
+description = "Inference using Ultralytics YOLO"
+requires-python = ">=3.9"
+
+dependencies = [
+  "ultralytics",
+  "opencv-python",
+  "python-dotenv",
+  "rich",
+]
