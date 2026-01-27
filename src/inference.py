@@ -14,6 +14,13 @@ from rich.console import Console
 
 console = Console()
 
+WINDOW_NAME = "YOLO Inference"
+
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+
 def load_config():
     """Load configuration from .env file."""
     load_dotenv()
@@ -27,7 +34,47 @@ def load_config():
         "iou": float(os.getenv("IOU", "0.45")),
         "track_conf": float(os.getenv("TRACK_CONF", "0.5")),
         "track_iou": float(os.getenv("TRACK_IOU", "0.5")),
+        "show_live": os.getenv("SHOW_LIVE", "false").lower() == "true",
+        "show_live_width": int(os.getenv("SHOW_LIVE_WIDTH", "0")),
+        "show_live_height": int(os.getenv("SHOW_LIVE_HEIGHT", "0")),
+        "show_live_fullscreen": os.getenv("SHOW_LIVE_FULLSCREEN", "false").lower() == "true",
+        "show_live_stop_on_close": os.getenv("SHOW_LIVE_STOP_ON_CLOSE", "true").lower() == "true",
     }
+
+
+def _setup_live_window(config):
+    """Create and configure the live preview window."""
+    if not config["show_live"]:
+        return
+
+    window_name = WINDOW_NAME
+    cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+
+    if config["show_live_fullscreen"]:
+        cv2.setWindowProperty(window_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+    else:
+        width = config["show_live_width"]
+        height = config["show_live_height"]
+        if width > 0 and height > 0:
+            cv2.resizeWindow(window_name, width, height)
+
+
+def _poll_key():
+    """Non-blocking key polling (Windows). Returns lowercase character or None."""
+    if msvcrt is None:
+        return None
+    if not msvcrt.kbhit():
+        return None
+    key = msvcrt.getch()
+    if not key:
+        return None
+    if key in (b"\x00", b"\xe0"):
+        msvcrt.getch()
+        return None
+    try:
+        return key.decode("utf-8").lower()
+    except UnicodeDecodeError:
+        return None
 
 
 
@@ -50,6 +97,10 @@ def run_inference(config):
     
     # Create output folder if it does not exist
     os.makedirs(detect_folder, exist_ok=True)
+
+    show_live = config["show_live"]
+    if show_live:
+        _setup_live_window(config)
     
     # Load YOLO model
     if not os.path.exists(model_path):
@@ -126,16 +177,41 @@ def run_inference(config):
                 # Draw detections on the frame
                 annotated_frame = results[0].plot()
 
+                key = _poll_key()
+                if key == "q":
+                    return
+                if key == "v":
+                    show_live = not show_live
+                    if show_live:
+                        _setup_live_window(config)
+                    else:
+                        cv2.destroyAllWindows()
+
+                if show_live:
+                    cv2.imshow(WINDOW_NAME, annotated_frame)
+                    cv2.waitKey(1)
+                    if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+                        show_live = False
+
                 # Write frame to output
                 out.write(annotated_frame)
 
                 count = 0
+                label_summary = ""
                 if getattr(results[0], "boxes", None) is not None:
                     count = len(results[0].boxes)
+                    names = getattr(results[0], "names", {})
+                    cls_ids = results[0].boxes.cls
+                    if cls_ids is not None and len(cls_ids) > 0:
+                        unique_ids = sorted(set(int(c) for c in cls_ids.tolist()))
+                        labels = [str(names.get(i, i)) for i in unique_ids]
+                        label_summary = ", ".join(labels)
                 inference_ms = None
                 if getattr(results[0], "speed", None) is not None:
                     inference_ms = results[0].speed.get("inference")
                 detail = f"{video_path.name} | {count} object(s)"
+                if label_summary:
+                    detail += f" | {label_summary}"
                 if inference_ms is not None:
                     detail += f" | {inference_ms:.1f} ms"
                 progress.update(task_id, advance=1, description=detail)
@@ -143,6 +219,8 @@ def run_inference(config):
         # Release resources
         cap.release()
         out.release()
+        if show_live:
+            cv2.destroyAllWindows()
         
         console.print(f"\nDone! Output saved to: {output_path}")
         
@@ -163,6 +241,10 @@ def run_inference_with_tracking(config):
     track_folder = os.path.join(output_folder, "track")
     
     os.makedirs(track_folder, exist_ok=True)
+
+    show_live = config["show_live"]
+    if show_live:
+        _setup_live_window(config)
     
     if not os.path.exists(model_path):
         console.print(f"Error: Model path not found: {model_path}")
@@ -217,16 +299,44 @@ def run_inference_with_tracking(config):
             )
 
             for r in results_stream:
+                key = _poll_key()
+                if key == "q":
+                    return
+                if key == "v":
+                    show_live = not show_live
+                    if show_live:
+                        _setup_live_window(config)
+                    else:
+                        cv2.destroyAllWindows()
+
+                if show_live:
+                    annotated_frame = r.plot()
+                    cv2.imshow(WINDOW_NAME, annotated_frame)
+                    cv2.waitKey(1)
+                    if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
+                        show_live = False
                 count = 0
+                label_summary = ""
                 if getattr(r, "boxes", None) is not None:
                     count = len(r.boxes)
+                    names = getattr(r, "names", {})
+                    cls_ids = r.boxes.cls
+                    if cls_ids is not None and len(cls_ids) > 0:
+                        unique_ids = sorted(set(int(c) for c in cls_ids.tolist()))
+                        labels = [str(names.get(i, i)) for i in unique_ids]
+                        label_summary = ", ".join(labels)
                 inference_ms = None
                 if getattr(r, "speed", None) is not None:
                     inference_ms = r.speed.get("inference")
                 detail = f"{video_path.name} | {count} object(s)"
+                if label_summary:
+                    detail += f" | {label_summary}"
                 if inference_ms is not None:
                     detail += f" | {inference_ms:.1f} ms"
                 progress.update(task_id, advance=1, description=detail)
+
+        if show_live:
+            cv2.destroyAllWindows()
 
         console.print(f"Done! Tracking results saved to folder: {track_folder}")
 

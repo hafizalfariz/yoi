@@ -97,6 +97,7 @@ MODEL_OPENVINO_DIR=models/openvino
 - If no video files are found in [video](video), the script exits gracefully.
 - Supported video formats: `.mp4`, `.avi`, `.mov`, `.mkv` (case-insensitive).
 - Model artifacts are excluded from Git: put `.pt` files in [models/pt](models/pt) and OpenVINO exports in [models/openvino](models/openvino).
+- Live preview hotkeys (during inference): press **v** to toggle the preview window, press **q** to stop processing.
 
 ## Author
 Hafiz Alfariz
