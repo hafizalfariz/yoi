@@ -42,6 +42,19 @@ def load_config():
     }
 
 
+def _get_fourcc_for_suffix(suffix: str) -> int:
+    """Return a codec FourCC based on video file suffix."""
+    suffix = suffix.lower()
+    codec_map = {
+        ".mp4": "mp4v",
+        ".mov": "mp4v",
+        ".mkv": "mp4v",
+        ".avi": "XVID",
+    }
+    codec = codec_map.get(suffix, "mp4v")
+    return cv2.VideoWriter_fourcc(*codec)
+
+
 def _setup_live_window(config):
     """Create and configure the live preview window."""
     if not config["show_live"]:
@@ -146,9 +159,10 @@ def run_inference(config):
         
         console.print(f"Video Info: {width}x{height} @ {fps}fps, Total frames: {total_frames}")
         
-        # Setup video writer for output
-        output_path = os.path.join(detect_folder, f"detected_{video_path.name}")
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        # Setup video writer for output (preserve original extension)
+        output_name = f"detected_{video_path.stem}{video_path.suffix}"
+        output_path = os.path.join(detect_folder, output_name)
+        fourcc = _get_fourcc_for_suffix(video_path.suffix)
         out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
         
         frame_count = 0
