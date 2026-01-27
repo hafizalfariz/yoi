@@ -16,9 +16,11 @@ ENV/
 .env
 
 # Data & outputs (keep folders, ignore contents)
-models/*
+models/**
 !models/.gitkeep
+models/pt/*
 !models/pt/.gitkeep
+models/openvino/*
 !models/openvino/.gitkeep
 output/*
 !output/.gitkeep
