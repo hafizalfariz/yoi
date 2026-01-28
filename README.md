@@ -14,7 +14,7 @@ A simple YOLO-based video inference pipeline that runs object detection on all v
 
 ## Requirements
 - Python $\ge 3.9$
-- A YOLO model file (`.pt`) or an OpenVINO model directory.
+- You only need a YOLO `.pt` model file. OpenVINO models will be auto-generated as needed.
 
 Dependencies are defined in [pyproject.toml](pyproject.toml).
 
@@ -24,6 +24,10 @@ models/
   pt/
     best.pt
   openvino/
+    <your_model_name>/
+      1/
+        best.xml
+        ...
 output/
   detect/
   track/
@@ -74,40 +78,41 @@ The pipeline is configured via [.nv](.env).
 ### 1) Place your videos
 Put your input videos in the [video](video) folder.
 
-### 2) Run inference
+
+### 2) Run inference & OpenVINO export
 ```bash
 uv run python src/inference.py
 ```
-You will be prompted to choose:
-- **1**: Standard Detection (frame by frame)
-- **2**: Detection with Tracking
+When you run the script, you will be prompted:
+- Do you want to export .pt to OpenVINO? (y/N)
+  - If yes, you can specify the output folder name (e.g. `person_360camera_detection`).
+  - If the folder already exists, you will get a warning to overwrite or rename.
+  - The export result will be placed in `models/openvino/<yourfolder>/1/`.
+- Choose mode:
+  - **1**: Standard Detection (frame by frame)
+  - **2**: Detection with Tracking
 
-**Outputs**:
-- Standard detection results go to [output/detect](output/detect)
-- Tracking results go to [output/track](output/track)
+**Output:**
+- Standard detection: [output/detect](output/detect)
+- Tracking: [output/track](output/track)
 
-**Live preview controls**:
-- Press **v** to show/hide the preview window while processing.
-- Press **q** to stop processing.
-- Closing/minimizing the preview window hides it; processing continues. Press **v** to show it again.
+**Live preview controls:**
+- Press **v** to show/hide the preview window.
+- Press **q** to stop.
 
-### 3) Export to OpenVINO (optional)
-```bash
-uv run python src/export_openvino.py
-```
-The OpenVINO model will be saved to [models/openvino](models/openvino).
 
-To run inference with OpenVINO:
-```env
-MODEL_TYPE=openvino
-MODEL_OPENVINO_DIR=models/openvino
-```
+### 3) Model detection & auto selection
+- The script will automatically detect OpenVINO models inside subfolder `models/openvino/<yourfolder>/1/`.
+- If the OpenVINO model does not exist, it will be auto-exported from `.pt`.
+- You can use `auto` mode (default) in `.env` so the script will pick the best model for your device.
+
 
 ## Notes
-- If no video files are found in [video](video), the script exits gracefully.
-- Supported video formats: `.mp4`, `.avi`, `.mov`, `.mkv` (case-insensitive).
-- Model artifacts are excluded from Git: put `.pt` files in [models/pt](models/pt) and OpenVINO exports in [models/openvino](models/openvino).
-- Live preview hotkeys (during inference): press **v** to toggle the preview window, press **q** to stop processing.
+- `.pt` models and OpenVINO export results are not uploaded to the repo (only the folder structure is included).
+- The script will always look for OpenVINO models in the `<yourfolder>/1/` subfolder.
+- If the OpenVINO output folder already exists, you will be prompted to overwrite or rename.
+- Supported video formats: `.mp4`, `.avi`, `.mov`, `.mkv`.
+- Preview hotkeys: **v** (toggle), **q** (stop).
 
 ## Author
 Hafiz Alfariz
