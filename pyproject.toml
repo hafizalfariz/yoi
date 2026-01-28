@@ -10,3 +10,11 @@ dependencies = [
   "python-dotenv",
   "rich",
 ]
+
+[project.optional-dependencies]
+openvino = [
+  "openvino>=2024.0.0",
+]
+onnx = [
+  "onnxruntime>=1.17.0",
+]

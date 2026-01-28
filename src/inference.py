@@ -2,6 +2,7 @@ from ultralytics import YOLO
 import cv2
 import os
 from pathlib import Path
+from typing import Optional
 from dotenv import load_dotenv
 from rich.progress import (
     Progress,
@@ -21,13 +22,34 @@ try:
 except ImportError:
     msvcrt = None
 
+
+def _patch_posixpath_for_windows():
+    """Patch pathlib to allow loading PosixPath pickles on Windows."""
+    if os.name != "nt":
+        return
+    import pathlib
+    try:
+        pathlib.PosixPath = pathlib.WindowsPath
+    except Exception:
+        pass
+
+
+def _is_openvino_available() -> bool:
+    try:
+        import openvino  # noqa: F401
+    except Exception:
+        return False
+    return True
+
 def load_config():
     """Load configuration from .env file."""
     load_dotenv()
     return {
-        "model_type": os.getenv("MODEL_TYPE", "pt").lower(),
+        "model_type": os.getenv("MODEL_TYPE", "auto").lower(),
         "model_pt_path": os.getenv("MODEL_PT_PATH", "models/pt/best.pt"),
         "model_openvino_dir": os.getenv("MODEL_OPENVINO_DIR", "models/openvino"),
+        "export_imgsz": int(os.getenv("EXPORT_IMGSZ", "640")),
+        "export_half": os.getenv("EXPORT_HALF", "false").lower() == "true",
         "video_folder": os.getenv("VIDEO_FOLDER", "vid"),
         "output_folder": os.getenv("OUTPUT_FOLDER", "output"),
         "conf": float(os.getenv("CONF", "0.25")),
@@ -89,22 +111,103 @@ def _poll_key():
         return key.decode("utf-8").lower()
     except UnicodeDecodeError:
         return None
+def _is_openvino_available() -> bool:
+    try:
+        import openvino  # noqa: F401
+    except Exception:
+        return False
+    return True
 
 
+def _find_openvino_model(openvino_dir: str, preferred_stem: Optional[str] = None) -> Optional[Path]:
+    path = Path(openvino_dir)
+    if not path.exists() or not path.is_dir():
+        return None
+    xml_files = sorted(path.rglob("*.xml"))
+    if not xml_files:
+        return None
+    if preferred_stem:
+        for xml in xml_files:
+            if xml.stem == preferred_stem:
+                return xml
+    if len(xml_files) == 1:
+        return xml_files[0]
+    return xml_files[0]
+
+
+def _export_openvino_from_pt(
+    pt_path: Path,
+    openvino_dir: Path,
+    imgsz: int,
+    half: bool,
+    output_name: Optional[str] = None,
+) -> bool:
+    if not _is_openvino_available():
+        console.print("OpenVINO is not installed. Skipping auto-export.")
+        return False
+    if not pt_path.exists():
+        console.print(f"Error: .pt model not found: {pt_path}")
+        return False
+
+    openvino_dir.mkdir(parents=True, exist_ok=True)
+    export_name = output_name or pt_path.stem
+    console.print(f"Auto-exporting {pt_path.name} to OpenVINO ({export_name})...")
+    model = YOLO(str(pt_path))
+    model.export(
+        format="openvino",
+        imgsz=imgsz,
+        half=half,
+        project=str(openvino_dir),
+        name=export_name,
+        exist_ok=True,
+    )
+    return True
 
 
 def resolve_model_path(config):
-    """Resolve model path based on MODEL_TYPE (pt or openvino)."""
+    """Resolve model path based on MODEL_TYPE (pt/openvino/auto)."""
     model_type = config["model_type"]
     if model_type == "openvino":
-        return config["model_openvino_dir"]
-    return config["model_pt_path"]
+        preferred_stem = Path(config["model_pt_path"]).stem
+        model = _find_openvino_model(config["model_openvino_dir"], preferred_stem)
+        if model is None:
+            exported = _export_openvino_from_pt(
+                Path(config["model_pt_path"]),
+                Path(config["model_openvino_dir"]),
+                config["export_imgsz"],
+                config["export_half"],
+            )
+            if exported:
+                model = _find_openvino_model(config["model_openvino_dir"], preferred_stem)
+        if model is not None:
+            return str(model), "openvino"
+        console.print("OpenVINO model not found. Falling back to .pt.")
+        return config["model_pt_path"], "pt"
+    if model_type == "pt":
+        return config["model_pt_path"], "pt"
+
+    # Auto: prefer OpenVINO when available and model exists, else fallback to PyTorch
+    openvino_dir = Path(config["model_openvino_dir"])
+    preferred_stem = Path(config["model_pt_path"]).stem
+    model = _find_openvino_model(str(openvino_dir), preferred_stem)
+    if model is None:
+        exported = _export_openvino_from_pt(
+            Path(config["model_pt_path"]),
+            openvino_dir,
+            config["export_imgsz"],
+            config["export_half"],
+        )
+        if exported:
+            model = _find_openvino_model(str(openvino_dir), preferred_stem)
+    if model is not None:
+        return str(model), "openvino"
+    return config["model_pt_path"], "pt"
 
 
 def run_inference(config):
     """Inference script using YOLOv11s. Configuration is loaded from .env."""
     
-    model_path = resolve_model_path(config)
+    model_path, model_type = resolve_model_path(config)
     video_folder = config["video_folder"]
     output_folder = config["output_folder"]
     detect_folder = os.path.join(output_folder, "detect")
@@ -121,7 +224,8 @@ def run_inference(config):
         console.print(f"Error: Model path not found: {model_path}")
         return
 
-    console.print(f"Loading model from [bold]{model_path}[/bold]...")
+    console.print(f"Loading model ({model_type}) from [bold]{model_path}[/bold]...")
+    _patch_posixpath_for_windows()
     model = YOLO(model_path)
     
     # Collect all video files in the input folder (dedupe on case-insensitive filesystems)
@@ -252,7 +356,7 @@ def run_inference(config):
 def run_inference_with_tracking(config):
     """Inference with tracking for smoother results."""
     
-    model_path = resolve_model_path(config)
+    model_path, model_type = resolve_model_path(config)
     video_folder = config["video_folder"]
     output_folder = config["output_folder"]
     track_folder = os.path.join(output_folder, "track")
@@ -267,7 +371,8 @@ def run_inference_with_tracking(config):
         console.print(f"Error: Model path not found: {model_path}")
         return
 
-    console.print(f"Loading model from [bold]{model_path}[/bold]...")
+    console.print(f"Loading model ({model_type}) from [bold]{model_path}[/bold]...")
+    _patch_posixpath_for_windows()
     model = YOLO(model_path)
     
     # Collect all video files (dedupe on case-insensitive filesystems)
@@ -291,8 +396,20 @@ def run_inference_with_tracking(config):
         console.print(f"{'='*60}")
 
         cap = cv2.VideoCapture(str(video_path))
+        if not cap.isOpened():
+            console.print(f"Error: Unable to open video {video_path.name}")
+            continue
+
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
         cap.release()
+
+        output_name = f"tracked_{video_path.stem}{video_path.suffix}"
+        output_path = os.path.join(track_folder, output_name)
+        fourcc = _get_fourcc_for_suffix(video_path.suffix)
+        out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
 
         progress = Progress(
             TextColumn("[bold cyan]{task.description}"),
@@ -311,9 +428,7 @@ def run_inference_with_tracking(config):
                 iou=config["track_iou"],
                 tracker=config["tracker_config"],
                 show=False,
-                save=True,
-                save_dir=track_folder,
-                exist_ok=True,
+                save=False,
                 verbose=False,
                 stream=True,
             )
@@ -329,12 +444,15 @@ def run_inference_with_tracking(config):
                     else:
                         cv2.destroyAllWindows()
 
+                annotated_frame = r.plot()
+
                 if show_live:
-                    annotated_frame = r.plot()
                     cv2.imshow(WINDOW_NAME, annotated_frame)
                     cv2.waitKey(1)
                     if cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1:
                         show_live = False
+
+                out.write(annotated_frame)
                 count = 0
                 label_summary = ""
                 if getattr(r, "boxes", None) is not None:
@@ -358,7 +476,9 @@ def run_inference_with_tracking(config):
         if show_live:
             cv2.destroyAllWindows()
 
-        console.print(f"Done! Tracking results saved to folder: {track_folder}")
+        out.release()
+
+        console.print(f"Done! Tracking results saved to: {output_path}")
 
 if __name__ == "__main__":
     console.print("=" * 60)
@@ -367,7 +487,42 @@ if __name__ == "__main__":
     
     config = load_config()
     
-    console.print("\nSelect inference mode:")
+    # Portability warning before mode selection
+    console.print("\n[bold yellow]Warning:[/bold yellow] Model portability notice")
+    console.print(
+        "- Model .pt can be OS-specific (e.g., saved on Linux -> PosixPath) and may fail on Windows."
+    )
+    console.print(
+        "- For cross-platform inference (Windows/Linux/macOS), prefer OpenVINO/ONNX models."
+    )
+    console.print(
+        "- Auto mode will prefer OpenVINO when available; otherwise it falls back to .pt."
+    )
+    console.print("- If OpenVINO model is missing, it will auto-export from the .pt model.")
+    console.print("- You can switch by setting MODEL_TYPE in .env (auto/pt/openvino).\n")
+
+    export_choice = input("Export .pt to OpenVINO now? (y/N): ").strip().lower()
+    if export_choice == "y":
+        default_name = Path(config["model_pt_path"]).stem
+        folder_name = (
+            input(f"OpenVINO output folder name [default: {default_name}]: ").strip()
+            or default_name
+        )
+        export_dir = Path(config["model_openvino_dir"]) / folder_name
+        exported = _export_openvino_from_pt(
+            Path(config["model_pt_path"]),
+            export_dir,
+            config["export_imgsz"],
+            config["export_half"],
+            output_name=folder_name,
+        )
+        if exported:
+            config["model_openvino_dir"] = str(export_dir)
+            console.print(f"OpenVINO saved to: {export_dir}")
+        else:
+            console.print("OpenVINO export skipped or failed.")
+
+    console.print("Select inference mode:")
     console.print("1. Standard Detection (frame by frame)")
     console.print("2. Detection with Tracking (object tracking)")
     
