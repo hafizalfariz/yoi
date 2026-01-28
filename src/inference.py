@@ -1,6 +1,7 @@
 from ultralytics import YOLO
 import cv2
 import os
+import shutil
 from pathlib import Path
 from typing import Optional
 from dotenv import load_dotenv
@@ -123,7 +124,10 @@ def _find_openvino_model(openvino_dir: str, preferred_stem: Optional[str] = None
     path = Path(openvino_dir)
     if not path.exists() or not path.is_dir():
         return None
-    xml_files = sorted(path.rglob("*.xml"))
+    # Prefer layout: <model_name>/1/*.xml
+    xml_files = sorted(path.rglob("1/*.xml"))
+    if not xml_files:
+        xml_files = sorted(path.rglob("*.xml"))
     if not xml_files:
         return None
     if preferred_stem:
@@ -137,31 +141,54 @@ def _find_openvino_model(openvino_dir: str, preferred_stem: Optional[str] = None
 
 def _export_openvino_from_pt(
     pt_path: Path,
-    openvino_dir: Path,
+    openvino_root: Path,
     imgsz: int,
     half: bool,
     output_name: Optional[str] = None,
-) -> bool:
+) -> Optional[Path]:
     if not _is_openvino_available():
         console.print("OpenVINO is not installed. Skipping auto-export.")
-        return False
+        return None
     if not pt_path.exists():
         console.print(f"Error: .pt model not found: {pt_path}")
-        return False
+        return None
 
-    openvino_dir.mkdir(parents=True, exist_ok=True)
+    openvino_root.mkdir(parents=True, exist_ok=True)
     export_name = output_name or pt_path.stem
-    console.print(f"Auto-exporting {pt_path.name} to OpenVINO ({export_name})...")
+    console.print(f"Auto-exporting {pt_path.name} to OpenVINO ({export_name}/1)...")
     model = YOLO(str(pt_path))
-    model.export(
+    export_result = model.export(
         format="openvino",
         imgsz=imgsz,
         half=half,
-        project=str(openvino_dir),
-        name=export_name,
+        project=str(openvino_root / export_name),
+        name="1",
         exist_ok=True,
     )
-    return True
+    exported_dir = openvino_root / export_name / "1"
+    # If Ultralytics exports elsewhere, move the artifacts into <name>/1
+    if export_result:
+        export_path = Path(export_result)
+        export_dir = export_path if export_path.is_dir() else export_path.parent
+        if export_dir.resolve() != exported_dir.resolve():
+            exported_dir.mkdir(parents=True, exist_ok=True)
+            for item in export_dir.iterdir():
+                target = exported_dir / item.name
+                if target.exists():
+                    if target.is_dir():
+                        shutil.rmtree(target)
+                    else:
+                        target.unlink()
+                shutil.move(str(item), str(target))
+            try:
+                if export_dir.exists() and not any(export_dir.iterdir()):
+                    export_dir.rmdir()
+            except OSError:
+                pass
+    if not list(exported_dir.rglob("*.xml")):
+        console.print("OpenVINO export produced no .xml files. Export may have failed.")
+        return None
+    return exported_dir
 
 
 def resolve_model_path(config):
@@ -171,13 +198,14 @@ def resolve_model_path(config):
         preferred_stem = Path(config["model_pt_path"]).stem
         model = _find_openvino_model(config["model_openvino_dir"], preferred_stem)
         if model is None:
-            exported = _export_openvino_from_pt(
+            exported_dir = _export_openvino_from_pt(
                 Path(config["model_pt_path"]),
                 Path(config["model_openvino_dir"]),
                 config["export_imgsz"],
                 config["export_half"],
             )
-            if exported:
+            if exported_dir is not None:
+                config["model_openvino_dir"] = str(exported_dir)
                 model = _find_openvino_model(config["model_openvino_dir"], preferred_stem)
         if model is not None:
             return str(model), "openvino"
@@ -191,13 +219,14 @@ def resolve_model_path(config):
     preferred_stem = Path(config["model_pt_path"]).stem
     model = _find_openvino_model(str(openvino_dir), preferred_stem)
     if model is None:
-        exported = _export_openvino_from_pt(
+        exported_dir = _export_openvino_from_pt(
             Path(config["model_pt_path"]),
             openvino_dir,
             config["export_imgsz"],
             config["export_half"],
         )
-        if exported:
+        if exported_dir is not None:
+            config["model_openvino_dir"] = str(exported_dir)
             model = _find_openvino_model(str(openvino_dir), preferred_stem)
     if model is not None:
         return str(model), "openvino"
@@ -504,21 +533,46 @@ if __name__ == "__main__":
     export_choice = input("Export .pt to OpenVINO now? (y/N): ").strip().lower()
     if export_choice == "y":
         default_name = Path(config["model_pt_path"]).stem
-        folder_name = (
-            input(f"OpenVINO output folder name [default: {default_name}]: ").strip()
-            or default_name
-        )
-        export_dir = Path(config["model_openvino_dir"]) / folder_name
-        exported = _export_openvino_from_pt(
-            Path(config["model_pt_path"]),
-            export_dir,
-            config["export_imgsz"],
-            config["export_half"],
-            output_name=folder_name,
-        )
-        if exported:
-            config["model_openvino_dir"] = str(export_dir)
-            console.print(f"OpenVINO saved to: {export_dir}")
+        export_root = Path(config["model_openvino_dir"])
+
+        while True:
+            folder_name = (
+                input(f"OpenVINO output folder name [default: {default_name}]: ").strip()
+                or default_name
+            )
+            target_parent = export_root / folder_name
+            target_export = target_parent / "1"
+            has_existing = target_parent.exists()
+            if target_export.exists() and any(target_export.iterdir()):
+                has_existing = True
+            if has_existing:
+                overwrite = input(
+                    f"Folder '{folder_name}' already exists. Overwrite? (y/N): "
+                ).strip().lower()
+                if overwrite == "y":
+                    shutil.rmtree(target_parent, ignore_errors=True)
+                    break
+                rename = input("Use a different name? (y/N): ").strip().lower()
+                if rename == "y":
+                    continue
+                console.print("OpenVINO export cancelled.")
+                folder_name = None
+                break
+            break
+
+        if folder_name is None:
+            exported_dir = None
+        else:
+            exported_dir = _export_openvino_from_pt(
+                Path(config["model_pt_path"]),
+                export_root,
+                config["export_imgsz"],
+                config["export_half"],
+                output_name=folder_name,
+            )
+        if exported_dir is not None:
+            config["model_openvino_dir"] = str(exported_dir)
+            console.print(f"OpenVINO saved to: {exported_dir}")
         else:
             console.print("OpenVINO export skipped or failed.")
 
