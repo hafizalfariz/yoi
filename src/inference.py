@@ -462,7 +462,7 @@ def run_inference_with_tracking(config):
                 source=str(video_path),
                 conf=config["track_conf"],
                 iou=config["track_iou"],
-                tracker=config["tracker_config"],
+                tracker="bytetrack.yaml",
                 show=False,
                 save=False,
                 verbose=False,
