@@ -15,8 +15,7 @@ A simple YOLO-based video inference pipeline that runs object detection on all v
 ## Requirements
 - Python $\ge 3.9$
 - You only need a YOLO `.pt` model file. OpenVINO models will be auto-generated as needed.
-
-Dependencies are defined in [pyproject.toml](pyproject.toml).
+- All dependencies, including OpenVINO, are installed automatically with `uv sync` (see [pyproject.toml](pyproject.toml)).
 
 ## Project Structure
 ```
@@ -40,17 +39,11 @@ pyproject.toml
 ```
 
 ## Setup
-### Option A: Using `uv`
+### Setup
 ```bash
 uv sync
 ```
-
-### Option B: Using `pip`
-```bash
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install ultralytics opencv-python python-dotenv rich
-```
+This will install all required dependencies, including OpenVINO. No manual pip install is needed.
 
 ## Configuration (.env)
 The pipeline is configured via [.nv](.env).

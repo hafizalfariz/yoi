@@ -3,6 +3,7 @@ import cv2
 import os
 import shutil
 from pathlib import Path
+import traceback
 from typing import Optional
 from dotenv import load_dotenv
 from rich.progress import (
@@ -156,15 +157,21 @@ def _export_openvino_from_pt(
     openvino_root.mkdir(parents=True, exist_ok=True)
     export_name = output_name or pt_path.stem
     console.print(f"Auto-exporting {pt_path.name} to OpenVINO ({export_name}/1)...")
-    model = YOLO(str(pt_path))
-    export_result = model.export(
-        format="openvino",
-        imgsz=imgsz,
-        half=half,
-        project=str(openvino_root / export_name),
-        name="1",
-        exist_ok=True,
-    )
+    try:
+        model = YOLO(str(pt_path))
+        export_result = model.export(
+            format="openvino",
+            imgsz=imgsz,
+            half=half,
+            project=str(openvino_root / export_name),
+            name="1",
+            exist_ok=True,
+        )
+        console.print(f"[debug] Ultralytics export_result: {export_result}")
+    except Exception as e:
+        console.print(f"[red]OpenVINO export failed: {e}[/red]")
+        traceback.print_exc()
+        return None
     exported_dir = openvino_root / export_name / "1"
     # If Ultralytics exports elsewhere, move the artifacts into <name>/1
     if export_result:
