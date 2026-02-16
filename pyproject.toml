@@ -1,0 +1,90 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "yoi-core"
+version = "1.0.0"
+description = "YOI (YOLO Vision Engine) - Computer Vision Processing Engine with Config Management"
+readme = "README.md"
+authors = [
+    { name = "AssistX AI Labs" }
+]
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.116.0",
+    "pydantic>=2.11.0",
+    "uvicorn>=0.35.0",
+    "pyyaml>=6.0.2",
+    "numpy>=1.26.0,<2.0",
+    "opencv-python>=4.8.1.78",
+    "scipy>=1.10.0",
+    "Pillow>=10.0.0",
+    "requests>=2.32.3",
+    "httpx>=0.28.0",
+]
+
+[dependency-groups]
+cpu = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "ultralytics>=8.0.0",
+    "lap>=0.5.12",
+    "onnxruntime>=1.23.0",
+]
+gpu = [
+    "torch>=2.0.0",
+    "torchvision>=0.15.0",
+    "ultralytics>=8.0.0",
+    "lap>=0.5.12",
+    "onnxruntime-gpu>=1.23.0",
+    "nvidia-ml-py3>=7.352.0",
+    "tensorrt>=8.5.0",
+]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-cov>=6.1.1",
+    "ipykernel>=6.29.5",
+    "black>=24.0.0",
+    "ruff>=0.12.0",
+    "mypy>=1.17.0",
+]
+api-builder = [
+    "fastapi>=0.116.0",
+    "uvicorn>=0.35.0",
+    "pydantic>=2.11.0",
+    "pyyaml>=6.0.2",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:cacheprovider -W ignore::DeprecationWarning"
+
+[tool.black]
+line-length = 130
+target-version = ["py310", "py311"]
+skip-gitignore = true
+
+[tool.ruff]
+line-length = 130
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+
+
+# Ensure uv/hatch can build the wheel and install all modules automatically
+[tool.hatch.build.targets.wheel]
+packages = [
+    "src/yoi",
+    "config_builder",
+    "yoi_builder",
+    "config_api"
+]

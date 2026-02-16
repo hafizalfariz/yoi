@@ -1,0 +1,16 @@
+services:
+  # Dev override: pakai source code lokal tanpa rebuild image.
+  app-yoi-cpu:
+    volumes:
+      - ./yoi:/app/yoi:rw
+      - ./src:/app/src:rw
+
+  # Dev override untuk GPU profile juga.
+  app-yoi-gpu:
+    volumes:
+      - ./yoi:/app/yoi:rw
+      - ./src:/app/src:rw
+
+  config-builder:
+    volumes:
+      - ./config_builder:/app/config_builder:rw

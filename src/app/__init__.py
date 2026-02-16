@@ -1,0 +1,3 @@
+"""
+YOI Application Module
+"""

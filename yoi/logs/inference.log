@@ -1,0 +1,32 @@
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - Model classes: {0: 'person'}
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:01 - yoi.inference - [cfg:global] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - Model classes: {0: 'person'}
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:10 - yoi.inference - [cfg:global] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - Model classes: {0: 'person'}
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:18 - yoi.inference - [cfg:global] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - Model classes: {0: 'person'}
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:06:13 - yoi.inference - [cfg:global] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled

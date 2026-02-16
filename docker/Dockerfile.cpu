@@ -1,0 +1,41 @@
+FROM python:3.11-slim
+
+LABEL maintainer="YOI Team"
+LABEL description="YOI Vision AI Engine - CPU Version"
+
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy runtime dependency manifest first for better layer reuse
+COPY requirements.runtime.txt /app/
+
+# Install Python dependencies - CPU wheels
+RUN pip install --upgrade pip && \
+    pip install --extra-index-url https://download.pytorch.org/whl/cpu -r /app/requirements.runtime.txt
+
+# Copy application source
+COPY yoi/ /app/yoi/
+COPY src/ /app/src/
+
+# Create runtime directories
+RUN mkdir -p /app/input /app/output /app/logs /app/models /app/configs
+
+# Use non-root user
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python -c "import sys; sys.exit(0)"
+
+CMD ["python", "src/app/main.py", "--validate"]

@@ -1,0 +1,393 @@
+:root {
+  --bg: #0f1117;
+  --panel: #171b24;
+  --panel-2: #1f2532;
+  --text: #e6e9ef;
+  --muted: #9aa4b2;
+  --primary: #1f4f86;
+  --primary-hover: #275f9f;
+  --ok: #3ddc84;
+  --warn: #ffa940;
+  --err: #ff6b6b;
+  --border: #2c3445;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', Arial, sans-serif;
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid var(--border);
+}
+
+h1 {
+  font-size: 32px;
+  margin-bottom: 8px;
+  color: var(--text);
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.card h2 {
+  font-size: 18px;
+  margin-bottom: 16px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.card h2::before {
+  content: '▶';
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+input, select, textarea {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  color: var(--text);
+  font-size: 14px;
+}
+
+select option {
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+button {
+  background: var(--primary);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+button:hover {
+  background: var(--primary-hover);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+button.secondary {
+  background: #233047;
+}
+
+button.secondary:hover {
+  background: #2a3a56;
+}
+
+button.success {
+  background: var(--ok);
+  color: #000;
+}
+
+button.danger {
+  background: var(--err);
+}
+
+.feature-selector {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.feature-card {
+  background: var(--panel-2);
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.feature-card:hover {
+  border-color: var(--primary);
+}
+
+.feature-card.active {
+  border-color: var(--primary);
+  background: rgba(31, 79, 134, 0.1);
+}
+
+.feature-card h3 {
+  font-size: 16px;
+  margin-bottom: 8px;
+}
+
+.feature-card p {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.feature-overview {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.feature-overview-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.feature-overview-subtitle {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.feature-overview-group {
+  margin-top: 10px;
+}
+
+.feature-overview-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.feature-overview-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.feature-overview-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 6px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+}
+
+.canvas-container {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #0c0f15;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+#canvas {
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.color-palette {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.color-chip {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.color-chip:hover {
+  transform: scale(1.1);
+}
+
+.color-chip.active {
+  border-color: var(--text);
+  border-width: 3px;
+}
+
+.geometry-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.geometry-item {
+  background: var(--panel-2);
+  padding: 12px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.geometry-item .name {
+  font-weight: 500;
+}
+
+.geometry-item .info {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.geometry-item button {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.yaml-preview {
+  background: #0c0f15;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'Consolas', monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.log-area {
+  background: #0c0f15;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'Consolas', monospace;
+  font-size: 12px;
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.log-entry {
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.log-entry:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: var(--muted);
+}
+
+.log-level-INFO {
+  color: var(--ok);
+}
+
+.log-level-WARNING {
+  color: var(--warn);
+}
+
+.log-level-ERROR {
+  color: var(--err);
+}
+
+.status-message {
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.status-message.info {
+  background: rgba(61, 220, 132, 0.1);
+  border: 1px solid var(--ok);
+  color: var(--ok);
+}
+
+.status-message.error {
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid var(--err);
+  color: var(--err);
+}
+
+.status-message.show {
+  display: block;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.button-group {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.controls {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}

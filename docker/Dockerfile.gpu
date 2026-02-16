@@ -1,0 +1,41 @@
+FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
+
+LABEL maintainer="YOI Team"
+LABEL description="YOI Vision AI Engine - GPU Version"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_ROOT_USER_ACTION=ignore
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 \
+    python3-pip \
+    ffmpeg \
+    libgl1-mesa-glx \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.runtime.gpu.txt /app/
+
+RUN pip3 install --upgrade pip && \
+    pip3 install --index-url https://download.pytorch.org/whl/cu118 torch torchvision && \
+    pip3 install -r /app/requirements.runtime.gpu.txt
+
+COPY yoi/ /app/yoi/
+COPY src/ /app/src/
+
+RUN mkdir -p /app/input /app/output /app/logs /app/models /app/configs
+
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+USER appuser
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 CMD python3.11 -c "import sys; sys.exit(0)"
+
+CMD ["python3.11", "src/app/main.py", "--validate"]

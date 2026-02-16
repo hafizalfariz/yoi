@@ -1,0 +1,9 @@
+# YOI Vision AI Engine - Runtime dependencies (Docker GPU image)
+opencv-python>=4.8.0
+ultralytics>=8.0.0
+lap>=0.5.12
+numpy>=1.21.0
+pyyaml>=6.0
+onnx
+onnxruntime-gpu==1.18.0
+flatbuffers

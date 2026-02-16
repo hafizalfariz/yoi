@@ -1,0 +1,33 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.log
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+.git/
+.gitignore
+.venv/
+venv/
+.env
+.env.*
+
+# Runtime/output assets (large, mounted at runtime)
+output/
+logs/
+docker/logs/
+yoi/logs/
+input/
+models/
+
+# Development and auxiliary folders not needed for engine image build
+tests/
+docs/
+
+# Workspace besar yang tidak dibutuhkan build API
+superpygeon/
+SpyResource(28-11)/
+configs/
+tools/

@@ -1,0 +1,24 @@
+# YOI Vision AI Engine - Local/Dev Dependencies
+# Note: Docker CPU image uses requirements.runtime.txt (runtime-only)
+# Core dependencies
+opencv-python>=4.8.0
+ultralytics>=8.0.0
+lap>=0.5.12
+numpy>=1.21.0
+pyyaml>=6.0
+
+# Optional: CUDA support
+# torch>=2.0.0
+# torchvision>=0.15.0
+
+# Development dependencies
+pytest>=7.0
+pytest-cov>=4.0
+black>=23.0
+flake8>=6.0
+mypy>=1.0
+
+# Inference dependencies (agar Docker tidak auto-install saat runtime)
+onnx
+onnxruntime
+flatbuffers

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YOI Config Builder</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header style="text-align: center; padding: 20px 0;">
+      <h1>YOI Config Builder</h1>
+      <p style="color: var(--muted); font-size: 16px; margin-top: 8px;">
+        <strong>Your Object Intelligence</strong> - Powerful visual configuration tool for AI detection systems
+      </p>
+      <p style="color: var(--muted); font-size: 14px; margin-top: 4px;">
+        Build production-ready YAML configs with intuitive canvas drawing, real-time preview, and smart validation
+      </p>
+    </header>
+
+    <!-- Status Message -->
+    <div id="statusMessage" class="status-message"></div>
+
+    <!-- Load Config -->
+    <div class="card">
+      <h2>Load Configuration</h2>
+      <p style="color: var(--muted); margin-bottom: 12px; font-size: 14px;">
+        Import existing YAML configuration file to continue editing
+      </p>
+      <div style="display: flex; gap: 12px; align-items: flex-end;">
+        <div class="form-group" style="flex: 1; margin-bottom: 0;">
+          <label for="configFile">Select YAML File</label>
+          <input type="file" id="configFile" accept=".yaml,.yml" style="padding: 8px;">
+        </div>
+        <button id="btnLoadConfig" class="primary" style="white-space: nowrap;">Load Config</button>
+      </div>
+    </div>
+
+    <!-- Config Name -->
+    <div class="card">
+      <h2>Configuration Name</h2>
+      <div class="form-group">
+        <label for="configName">Config Name</label>
+        <input type="text" id="configName" value="my-config" placeholder="my-config">
+      </div>
+    </div>
+
+    <!-- Source Input -->
+    <div class="card">
+      <h2>Source Input</h2>
+      <p style="color: var(--muted); margin-bottom: 12px; font-size: 14px;">
+        <strong>Pilih mode engine:</strong> Production untuk RTSP live stream (looping), Inference untuk video file (no loop, re-process logs)
+      </p>
+      <div class="button-group" style="margin-bottom: 16px;">
+        <button id="btnProduction">Production (RTSP)</button>
+        <button id="btnInference">Inference (Video)</button>
+      </div>
+
+      <!-- Production Inputs -->
+      <div id="productionInputs" class="hidden">
+        <div class="form-group">
+          <label for="rtspUrl">RTSP URL (looping enabled)</label>
+          <input type="text" id="rtspUrl" value="rtsp://localhost/stream" placeholder="rtsp://...">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">URL stream RTSP dari kamera - video akan loop terus menerus</small>
+        </div>
+        <div class="form-group">
+          <label for="maxFpsProduction">Max FPS</label>
+          <input type="number" id="maxFpsProduction" value="30" min="1" max="60">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Frame per second (1-60) - makin tinggi makin halus tapi butuh resource lebih</small>
+        </div>
+
+        <!-- Time Allowed Configuration -->
+        <div style="border-top: 1px solid var(--border); margin: 20px 0; padding-top: 20px;">
+          <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text);">Schedule (Kapan AI Menyala)</h3>
+          <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">
+            Tentukan jam operasional kapan fitur AI aktif (opsional - biarkan kosong untuk 24/7)
+          </p>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="timeAllowedStart">Start Time (HH:MM:SS)</label>
+              <input type="text" id="timeAllowedStart" value="" placeholder="07:00:00">
+              <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Jam mulai deteksi (contoh: 07:00:00 untuk jam 7 pagi)</small>
+            </div>
+            <div class="form-group">
+              <label for="timeAllowedEnd">End Time (HH:MM:SS)</label>
+              <input type="text" id="timeAllowedEnd" value="" placeholder="17:00:00">
+              <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Jam berakhir deteksi (contoh: 17:00:00 untuk jam 5 sore)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Inference Inputs -->
+      <div id="inferenceInputs">
+        <div class="form-group">
+          <label for="videoSource">Video Input Path(s)</label>
+          <input type="text" id="videoSource" value="input/test.mp4" placeholder="input/test.mp4, input/test2.mp4">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">
+            Path video file untuk testing (single atau multiple). Pisahkan multi video dengan koma atau baris baru.
+            <br>Contoh single: input/test.mp4
+            <br>Contoh multi: input/test1.mp4, input/test2.mp4
+            <br>Bisa juga absolute path: /home/user/videos/test.mp4 atau D:/videos/test.mp4
+            <br>Output config inference akan menggunakan video_files (tanpa video_source)
+          </small>
+        </div>
+        <div class="form-group">
+          <label for="maxFpsInference">Max FPS</label>
+          <input type="number" id="maxFpsInference" value="30" min="1" max="60">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Frame per second (1-60) - default 30 fps untuk hasil terbaik</small>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs Configuration -->
+    <div class="card">
+      <h2>Logs Configuration</h2>
+      <p style="color: var(--muted); margin-bottom: 12px; font-size: 14px;">
+        <strong>Folder untuk logs engine:</strong> Tentukan direktori logs dan setting re-inference untuk kirim ulang data ke dashboard
+      </p>
+      
+      <div class="form-group">
+        <label for="logsBaseDir">Logs Base Directory</label>
+        <input type="text" id="logsBaseDir" value="logs" placeholder="logs">
+        <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Folder utama untuk semua logs (akan berisi subfolder: data, image, status, dan data.csv)</small>
+      </div>
+
+      <div style="border-top: 1px solid var(--border); margin: 20px 0; padding-top: 20px;">
+        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text);">Re-Inference Settings</h3>
+        <p style="color: var(--muted); font-size: 13px; margin-bottom: 16px;">
+          Gunakan untuk kirim ulang data yang belum terkirim ke dashboard (baca logs lama, proses ulang, kirim ke dashboard)
+        </p>
+
+        <div class="form-group">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+            <input type="checkbox" id="enableLogReading" style="width: auto;">
+            <span>Enable Log Reading (baca logs yang sudah ada)</span>
+          </label>
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px; margin-left: 28px;">Aktifkan jika ingin engine membaca logs yang sudah ada untuk re-inference</small>
+        </div>
+
+        <div id="logReadingOptions" class="hidden" style="margin-top: 16px; padding-left: 20px; border-left: 3px solid var(--primary);">
+          <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+              <input type="checkbox" id="enableLogDeletion" style="width: auto;">
+              <span>Enable Log Deletion (hapus setelah proses)</span>
+            </label>
+            <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px; margin-left: 28px;">Hapus logs setelah berhasil dikirim ke dashboard (hemat storage)</small>
+          </div>
+
+          <div class="form-row" style="margin-top: 16px;">
+            <div class="form-group">
+              <label for="startDate">Start Date (optional)</label>
+              <input type="date" id="startDate" placeholder="YYYY-MM-DD">
+              <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Tanggal mulai logs yang ingin di-re-inference (kosongkan untuk semua)</small>
+            </div>
+            <div class="form-group">
+              <label for="endDate">End Date (optional)</label>
+              <input type="date" id="endDate" placeholder="YYYY-MM-DD">
+              <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Tanggal akhir logs yang ingin di-re-inference (kosongkan untuk semua)</small>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Model Configuration -->
+    <div class="card">
+      <h2>Model Configuration</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="modelName">Model Name</label>
+          <input type="text" id="modelName" value="person_office_detection">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Nama model detection yang akan digunakan (misal: person_office_detection)</small>
+        </div>
+        <div class="form-group">
+          <label for="device">Device</label>
+          <select id="device">
+            <option value="cpu">CPU</option>
+            <option value="gpu">GPU</option>
+          </select>
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Hardware untuk processing - GPU lebih cepat tapi butuh NVIDIA GPU</small>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="yoloType">YOLO Type</label>
+          <select id="yoloType">
+            <option value="small">Small (s)</option>
+            <option value="medium">Medium (m)</option>
+            <option value="large">Large (l)</option>
+          </select>
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Small = cepat tapi kurang akurat, Large = lambat tapi lebih akurat</small>
+        </div>
+        <div class="form-group">
+          <label for="conf">Confidence</label>
+          <input type="number" id="conf" value="0.25" min="0" max="1" step="0.01">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Minimum confidence (0-1) untuk detection - makin tinggi makin strict</small>
+        </div>
+        <div class="form-group">
+          <label for="iou">IOU</label>
+          <input type="number" id="iou" value="0.7" min="0" max="1" step="0.01">
+          <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Intersection Over Union (0-1) untuk filter duplikat detection</small>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="classes">Classes (comma-separated)</label>
+        <input type="text" id="classes" value="person" placeholder="person, car, dog">
+        <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">Object classes yang akan dideteksi (pisahkan dengan koma)</small>
+      </div>
+    </div>
+
+    <!-- Feature Selection -->
+    <div class="card">
+      <h2>Feature Selection</h2>
+      <p style="color: var(--muted); margin-bottom: 16px;">Select one feature to configure</p>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+        <div class="feature-card" data-feature="region_crowd">
+          <div class="feature-name">Region Crowd</div>
+          <div class="feature-desc">Detect overcrowding in areas</div>
+        </div>
+        <div class="feature-card" data-feature="line_cross">
+          <div class="feature-name">Line Cross</div>
+          <div class="feature-desc">Count line crossings</div>
+        </div>
+        <div class="feature-card" data-feature="dwell_time">
+          <div class="feature-name">Dwell Time</div>
+          <div class="feature-desc">Measure loitering duration</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dynamic Feature Parameters -->
+    <div id="featureParams" class="card hidden">
+      <h2>Feature Parameters</h2>
+      <div id="paramsContainer"></div>
+    </div>
+
+    <!-- Canvas Drawing -->
+    <div class="card">
+      <h2>Canvas Drawing</h2>
+      <p style="color: var(--muted); margin-bottom: 12px; font-size: 14px;">
+        <strong>Cara pakai:</strong> 1) Upload gambar CCTV → 2) Pilih warna → 3) Klik "Create Region/Line" → 4) Draw di canvas → 5) Klik "Save Geometry"
+      </p>
+      
+      <!-- Image Upload -->
+      <div style="margin-bottom: 20px; padding: 16px; background: var(--bg); border-radius: 8px; border: 1px solid var(--border);">
+        <h3 style="font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text);">Upload CCTV Image</h3>
+        <p style="color: var(--muted); font-size: 13px; margin-bottom: 12px;">
+          Upload screenshot dari CCTV untuk menggambar region/line dengan akurat
+        </p>
+        <div style="display: flex; gap: 12px; align-items: flex-end;">
+          <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <label for="imageFile">Select Image (JPG, PNG)</label>
+            <input type="file" id="imageFile" accept="image/jpeg,image/jpg,image/png" style="padding: 8px;">
+            <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">
+              Gambar akan di-resize otomatis ke canvas 16:9 (960x540)
+            </small>
+          </div>
+          <button id="btnClearImage" class="secondary" style="white-space: nowrap;">Clear Image</button>
+        </div>
+      </div>
+      
+      <!-- Controls -->
+      <div class="controls">
+        <button id="btnCreateRegion" class="primary">Create Region</button>
+        <button id="btnCreateLine" class="primary">Create Line</button>
+        <button id="btnSaveGeometry" class="success" disabled>Save Geometry</button>
+        <button id="btnCancelDrawing" class="secondary" disabled>Cancel</button>
+        <button id="btnClearAll" class="danger">Clear All</button>
+      </div>
+
+      <!-- Color Palette -->
+      <div style="margin: 16px 0;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Color:</label>
+        <div id="colorPalette" class="color-palette"></div>
+        <small style="color: var(--muted); font-size: 12px; display: block; margin-top: 4px;">
+          Pilih warna sebelum create region/line - setiap geometry bisa punya warna beda
+        </small>
+      </div>
+
+      <!-- Line Direction Picker Instructions -->
+      <div id="directionPickerInstructions" style="display: none; margin: 16px 0; padding: 16px; background: #e8f4f8; border-left: 4px solid #17a2b8; border-radius: 4px;">
+        <div style="display: flex; align-items: start; gap: 12px;">
+          <div style="font-size: 24px;">&gt;</div>
+          <div>
+            <h4 style="margin: 0 0 8px 0; color: #333; font-size: 14px;">Tentukan Arah Garis: Klik Salah Satu Sisi</h4>
+            <p style="margin: 0 0 12px 0; color: #666; font-size: 13px;">
+              Klik salah satu sisi garis untuk menentukan arah masuk (IN). Sisi lainnya akan otomatis menjadi keluar (OUT).
+            </p>
+            <div style="display: flex; gap: 16px; font-size: 13px;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #ffcc00; border-radius: 3px; opacity: 0.7;"></span>
+                <span style="color: #666;"><strong>Titik Tengah (Kuning)</strong> = Centroid (pusatnya)</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="display: inline-block; width: 24px; height: 24px; background: #cccccc; border-radius: 3px; opacity: 0.5;"></span>
+                <span style="color: #666;"><strong>Area Transparan</strong> = Klik untuk pilih arah</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas -->
+      <div class="canvas-container">
+        <canvas id="canvas" width="960" height="540"></canvas>
+      </div>
+
+      <!-- Geometry Lists -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px;">
+        <div>
+          <h3 style="margin-bottom: 8px;">Regions (<span id="regionCount">0</span>)</h3>
+          <div id="regionList" class="geometry-list"></div>
+        </div>
+        <div>
+          <h3 style="margin-bottom: 8px;">Lines (<span id="lineCount">0</span>)</h3>
+          <div id="lineList" class="geometry-list"></div>
+        </div>
+      </div>
+
+      <!-- Line Properties Editor (for line_cross feature) -->
+      <div id="linePropertiesEditor" style="display: none; margin-top: 16px; padding: 12px; background: var(--surface2); border-radius: 4px; border-left: 3px solid var(--primary);">
+        <h3 style="margin: 0 0 8px 0; font-size: 14px;">Line Properties</h3>
+        <div style="font-size: 12px; color: var(--muted); margin-bottom: 12px;">
+          Editing Line: <span id="editingLineId" style="font-weight: bold;"></span>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div>
+            <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Orientation</label>
+            <select id="lineOrientation" style="width: 100%; padding: 4px; background: var(--surface); color: var(--text); border: 1px solid var(--muted); border-radius: 2px;">
+              <option value="horizontal">Horizontal</option>
+              <option value="vertical">Vertical</option>
+              <option value="diagonal">Diagonal</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px;">Direction</label>
+            <select id="lineDirection" style="width: 100%; padding: 4px; background: var(--surface); color: var(--text); border: 1px solid var(--muted); border-radius: 2px;">
+              <option value="upward">Upward</option>
+              <option value="downward">Downward</option>
+              <option value="leftward">Leftward</option>
+              <option value="rightward">Rightward</option>
+              <option value="custom">Custom (type)</option>
+            </select>
+            <input id="lineDirectionText" type="text" placeholder="e.g. upward" style="display:none; width: 100%; margin-top: 6px; padding: 4px; background: var(--surface); color: var(--text); border: 1px solid var(--muted); border-radius: 2px;" />
+          </div>
+        </div>
+
+        <div style="margin-top: 10px; display: flex; align-items: center; gap: 8px;">
+          <input id="lineBidirectional" type="checkbox" />
+          <label for="lineBidirectional" style="font-size: 12px; color: var(--muted);">Bidirectional</label>
+        </div>
+        
+        <div style="margin-top: 8px; display: flex; gap: 8px; justify-content: flex-end;">
+          <button id="btnSaveLineProps" class="primary" style="padding: 4px 12px; font-size: 12px;">Save</button>
+          <button id="btnCancelLineProps" class="secondary" style="padding: 4px 12px; font-size: 12px;">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- YAML Preview -->
+    <div class="card">
+      <h2>YAML Preview</h2>
+      <div class="button-group" style="margin-bottom: 16px;">
+        <button id="btnBuildPreview" class="primary">Build Preview</button>
+        <button id="btnSaveConfig" class="success">Save Config</button>
+      </div>
+      <pre id="yamlPreview" style="background: var(--bg); padding: 16px; border-radius: 8px; max-height: 400px; overflow: auto; font-family: 'Consolas', monospace; font-size: 13px;">Click "Build Preview" to generate YAML...</pre>
+    </div>
+
+    <!-- Activity Logs -->
+    <div class="card">
+      <h2>Activity Logs</h2>
+      <button id="btnClearLogs" class="secondary" style="margin-bottom: 12px;">Clear Logs</button>
+      <div id="logArea" class="log-area"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

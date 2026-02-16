@@ -1,0 +1,59 @@
+model:
+  name: person_general_detection
+  device: cpu
+  conf: 0.4
+  iou: 0.7
+  type: small
+  classes:
+  - person
+feature: line_cross
+feature_params:
+  line_cross:
+    centroid: mid_centre
+    lost_threshold: 10
+    allow_recounting: true
+    time_allowed: ''
+regions: []
+lines:
+- coords:
+  - x: 0.3092415606643322
+    y: 0.31234720123266757
+  - x: 0.7060764222822016
+    y: 0.302779857268433
+  id: 1
+  type: line_1
+  color: '#0080ff'
+  direction: downward
+  orientation: horizontal
+  bidirectional: false
+  mode: []
+input:
+  source_type: video
+  video_source: input/5.mp4
+  video_files:
+  - input/5.mp4
+  max_fps: 30
+  input_path: input
+  video_inference:
+    enabled: true
+    dir_path: input/
+    video_filename:
+    - - input/5.mp4
+      - '2026-02-14'
+logs:
+  base_dir: logs
+  data_folder: data
+  image_folder: image
+  status_folder: status
+  csv_file: data.csv
+  inference_logs_dir: logs/inference
+output:
+  output_path: output
+  url_dashboard: 0.0.0.0
+  save_video:
+    enabled: true
+  save_annotations:
+    enabled: true
+  output_format: annotated_video
+metadata:
+  cctv_id: office

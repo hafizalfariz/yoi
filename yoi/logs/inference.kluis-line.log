@@ -1,0 +1,6 @@
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - WARNING - Overriding config device 'cpu' -> 'cuda' based on runtime profile
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:08:53 - yoi.inference - [cfg:kluis-line] - INFO - Model classes: {0: 'person'}

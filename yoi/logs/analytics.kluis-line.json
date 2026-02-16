@@ -1,0 +1,3 @@
+{"timestamp": "2026-02-16T13:08:53.875923", "level": "INFO", "logger": "yoi.analytics", "message": "Tracker initialized with ByteTrack", "module": "object_tracker", "function": "__init__", "line": 192}
+{"timestamp": "2026-02-16T13:08:53.876432", "level": "INFO", "logger": "yoi.analytics", "message": "ReID enabled (similarity>=0.86, momentum=0.25)", "module": "object_tracker", "function": "__init__", "line": 194}
+{"timestamp": "2026-02-16T13:09:10.662272", "level": "INFO", "logger": "yoi.analytics", "message": "Analytics exported to output\\kluis-line\\19_20260216-130853", "module": "analytics", "function": "export_summaries", "line": 200}

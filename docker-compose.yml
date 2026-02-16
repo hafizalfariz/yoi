@@ -1,0 +1,305 @@
+services:
+  # ===========================
+  # CPU Profile Service
+  # ===========================
+  app-yoi-cpu:
+    profiles: ["cpu"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.cpu
+    container_name: yoi-engine-cpu
+    restart: ${AUTO_RESTART:-on-failure}
+    
+    cpus: ${CPU_LIMIT:-2.0}
+    mem_limit: ${MEMORY_LIMIT:-4g}
+    stop_grace_period: 60s
+    
+    volumes:
+      # Input videos
+      - ./input:/app/input:ro
+      - ./output:/app/output:rw
+      - ./logs:/app/logs:rw
+      - ./models:/app/models:ro
+      - yolo-models-cache:/app/.cache/yolo11
+      - ./configs:/app/configs:ro
+      - ./yoi:/app/yoi:rw
+      - ./src:/app/src:rw
+    
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=Asia/Jakarta
+      - YOI_RUNTIME_PROFILE=cpu
+      - MODEL_CACHE_DIR=/app/.cache/yolo11
+      - YOLO_CONFIG_DIR=/tmp
+      - OMP_NUM_THREADS=${OMP_NUM_THREADS:-6}
+      - OPENCV_FOR_THREADS_NUM=${OPENCV_FOR_THREADS_NUM:-2}
+      - YOI_YOLO_IMGSZ=${YOI_YOLO_IMGSZ:-512}
+      - YOI_TARGET_DEVICE=cpu
+      - YOI_INFER_EVERY_N_FRAMES=${YOI_INFER_EVERY_N_FRAMES:-1}
+      - YOI_MAX_INFERENCE_SECONDS=${YOI_MAX_INFERENCE_SECONDS:-0}
+      - YOI_LOG_DIR=/app/logs/engine
+      - YOI_LOG_TO_FILE=${YOI_LOG_TO_FILE:-1}
+      - YOI_LOG_MAX_MB=${YOI_LOG_MAX_MB:-5}
+      - YOI_LOG_BACKUP_COUNT=${YOI_LOG_BACKUP_COUNT:-3}
+      - YOI_EXPORT_DEBUG_ARTIFACTS=${YOI_EXPORT_DEBUG_ARTIFACTS:-1}
+      - YOI_RTSP_FLUSH_EVERY_FRAME=${YOI_RTSP_FLUSH_EVERY_FRAME:-0}
+      - YOI_LOOP_FILE_INPUT=${YOI_LOOP_FILE_INPUT:-1}
+      - YOI_RTSP_AUTO_RECOVER=${YOI_RTSP_AUTO_RECOVER:-1}
+      - YOI_RTSP_RECOVER_COOLDOWN_SECONDS=${YOI_RTSP_RECOVER_COOLDOWN_SECONDS:-2}
+      - YOI_FEATURE_LOG_EVERY_N_FRAMES=${YOI_FEATURE_LOG_EVERY_N_FRAMES:-10}
+      - YOI_STRICT_DEVICE=${YOI_STRICT_DEVICE:-0}
+      - YOI_WAIT_RTSP_READY=${YOI_WAIT_RTSP_READY:-0}
+      - CONFIG_DIR=${CONFIG_DIR:-/app/configs/app}
+      - YOI_CONFIG_FILE=${YOI_CONFIG_FILE:-}
+      - YOI_CONFIG_PATH=${YOI_CONFIG_PATH:-}
+    
+    # Command will validate then run using auto config resolver in main.py
+    # (or explicit --config when provided manually)
+    command: >
+      sh -c "set -e
+      && echo '=== YOI ENGINE STARTUP ==='
+      && python src/app/main.py --validate
+      && exec python src/app/main.py"
+    
+    networks:
+      - yoi-network
+    
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ===========================
+  # GPU Profile Service  
+  # ===========================
+  app-yoi-gpu:
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.gpu
+    container_name: yoi-engine-gpu
+    restart: ${AUTO_RESTART:-on-failure}
+    
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    
+    cpus: ${CPU_LIMIT:-4.0}
+    mem_limit: ${MEMORY_LIMIT:-8g}
+    stop_grace_period: 60s
+    
+    volumes:
+      # Input videos
+      - ${INPUT_PATH:-./input}:/app/input:ro
+      
+      # Output results
+      - ${OUTPUT_PATH:-./output}:/app/output:rw
+      
+      # Logs
+      - ${LOGS_PATH:-./logs}:/app/logs:rw
+      
+      # Models
+      - ${MODELS_PATH:-./models}:/app/models:ro
+      
+      # Model cache
+      - yolo-models-cache:${MODEL_CACHE_DIR:-/root/.cache/yolo11}
+      
+      # Configuration from config builder
+      - ${CONFIGS_PATH:-./configs}:/app/configs:ro
+    
+    environment:
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Asia/Jakarta}
+      - YOI_RUNTIME_PROFILE=gpu
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0}
+      - YOI_TARGET_DEVICE=cuda
+      - MODEL_CACHE_DIR=${MODEL_CACHE_DIR:-/root/.cache/yolo11}
+      - YOI_STRICT_DEVICE=${YOI_STRICT_DEVICE:-1}
+      - YOI_MAX_INFERENCE_SECONDS=${YOI_MAX_INFERENCE_SECONDS:-0}
+      - YOI_LOG_DIR=/app/logs/engine
+      - YOI_LOG_TO_FILE=${YOI_LOG_TO_FILE:-1}
+      - YOI_LOG_MAX_MB=${YOI_LOG_MAX_MB:-5}
+      - YOI_LOG_BACKUP_COUNT=${YOI_LOG_BACKUP_COUNT:-3}
+      - YOI_EXPORT_DEBUG_ARTIFACTS=${YOI_EXPORT_DEBUG_ARTIFACTS:-1}
+      - YOI_LOOP_FILE_INPUT=${YOI_LOOP_FILE_INPUT:-1}
+      - CONFIG_DIR=${CONFIG_DIR:-/app/configs/app}
+      - YOI_CONFIG_FILE=${YOI_CONFIG_FILE:-}
+      - YOI_CONFIG_PATH=${YOI_CONFIG_PATH:-}
+    
+    # Command will validate then run using auto config resolver in main.py
+    # (or explicit --config when provided manually)
+    command: >
+      sh -c "echo '=== YOI ENGINE STARTUP ===' &&
+      python3 src/app/main.py --validate &&
+      exec python3 src/app/main.py"
+    
+    networks:
+      - yoi-network
+    
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import sys; sys.exit(0)"]
+      interval: ${HEALTH_CHECK_INTERVAL:-30}s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================
+  # Config Builder Service (Optional)
+  # Use with: docker compose up --profile builder
+  # Disable for production: docker compose up
+  # ===========================
+  config-builder:
+    profiles: ["builder"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.config-builder
+    container_name: yoi-config-builder
+    restart: unless-stopped
+    
+    ports:
+      - "${CONFIG_BUILDER_PORT:-8032}:8020"
+    
+    volumes:
+      - ${CONFIGS_PATH:-./configs}:/app/configs:rw
+      - ${LOGS_PATH:-./logs}:/app/logs:rw
+    
+    environment:
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Asia/Jakarta}
+    
+    command: >
+      sh -c "echo '=== CONFIG BUILDER STARTUP ===' &&
+      python -m uvicorn config_builder.main:app --host 0.0.0.0 --port 8020"
+    
+    networks:
+      - yoi-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8020/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================
+  # Config API Service (Optional)
+  # Use with: docker compose up --profile dev
+  # ===========================
+  config-api:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.config-api
+    container_name: yoi-config-api
+    restart: unless-stopped
+    
+    ports:
+      - "${CONFIG_API_PORT:-8010}:8010"
+    
+    volumes:
+      - ${CONFIGS_PATH:-./configs}:/app/configs:rw
+      - ${LOGS_PATH:-./logs}:/app/logs:rw
+    
+    environment:
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Asia/Jakarta}
+    
+    command: >
+      sh -c "echo '=== CONFIG API STARTUP ===' &&
+      python -m uvicorn config_api.main:app --host 0.0.0.0 --port 8010"
+    
+    networks:
+      - yoi-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================
+  # YOI Builder Service (Optional)
+  # Use with: docker compose up --profile dev
+  # ===========================
+  yoi-builder:
+    profiles: ["dev"]
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.yoi-builder
+    container_name: yoi-yoi-builder
+    restart: unless-stopped
+    
+    ports:
+      - "${YOI_BUILDER_PORT:-8030}:8030"
+    
+    volumes:
+      - ${CONFIGS_PATH:-./configs}:/app/configs:rw
+      - ${LOGS_PATH:-./logs}:/app/logs:rw
+    
+    environment:
+      - PYTHONUNBUFFERED=${PYTHONUNBUFFERED:-1}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TZ=${TZ:-Asia/Jakarta}
+    
+    command: >
+      sh -c "echo '=== YOI BUILDER STARTUP ===' &&
+      python -m uvicorn yoi_builder.main:app --host 0.0.0.0 --port 8030"
+    
+    networks:
+      - yoi-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8030/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ===========================
+  # MediaMTX RTSP Server (Optional)
+  # Provides RTSP endpoint for YOI annotated stream
+  # ===========================
+  mediamtx:
+    profiles: ["dev", "rtsp", "cpu", "gpu"]
+    image: bluenviron/mediamtx:latest
+    pull_policy: missing
+    container_name: yoi-mediamtx
+    restart: unless-stopped
+    environment:
+      - MTX_READTIMEOUT=30s
+      - MTX_WRITETIMEOUT=30s
+
+    # Map host port 6554 -> container 8554 (MediaMTX default RTSP port)
+    # So engine can use rtsp://localhost:6554/kluis-line
+    ports:
+      - "6554:8554"
+
+    networks:
+      - yoi-network
+
+volumes:
+  yolo-models-cache:
+    driver: local
+
+  config-builder-data:
+    driver: local
+
+networks:
+  yoi-network:
+    driver: bridge

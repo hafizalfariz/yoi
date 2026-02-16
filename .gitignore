@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+
+# Test/lint/type caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+
+# Virtual environments
+.venv/
+venv/
+
+# Local env files
+.env
+.env.*
+
+# Runtime artifacts
+logs/**
+!logs/.gitkeep
+output/**
+!output/.gitkeep
+input/**
+!input/.gitkeep
+
+# Heavy runtime assets
+models/**
+!models/.gitkeep
+
+# Config directories (keep folder structure, ignore contents)
+configs/**
+!configs/.gitkeep
+!configs/app/
+configs/app/**
+!configs/app/.gitkeep
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Private audit docs (local only)
+.private_audit/

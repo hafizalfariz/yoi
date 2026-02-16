@@ -1,0 +1,41 @@
+2026-02-16 19:39:40 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 19:39:40 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:39:40 - yoi.inference - [cfg:dwelltime-rtsp-multi] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled
+2026-02-16 19:40:28 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - Overriding config device 'cuda' -> 'cpu' based on runtime profile
+2026-02-16 19:40:28 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.onnx
+2026-02-16 19:40:28 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:40:28 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 19:40:29 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 19:47:48 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - Overriding config device 'cuda' -> 'cpu' based on runtime profile
+2026-02-16 19:47:48 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.onnx
+2026-02-16 19:47:48 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:47:48 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 19:47:48 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 19:56:20 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - Overriding config device 'cuda' -> 'cpu' based on runtime profile
+2026-02-16 19:56:20 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.onnx
+2026-02-16 19:56:20 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:56:20 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 19:56:20 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 19:57:01 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - Overriding config device 'cuda' -> 'cpu' based on runtime profile
+2026-02-16 19:57:01 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.onnx
+2026-02-16 19:57:01 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:57:01 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 19:57:02 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 19:57:44 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - Overriding config device 'cuda' -> 'cpu' based on runtime profile
+2026-02-16 19:57:44 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.onnx
+2026-02-16 19:57:44 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:57:44 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 19:57:44 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 19:58:24 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 19:58:24 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 19:58:24 - yoi.inference - [cfg:dwelltime-rtsp-multi] - ERROR - Failed to load YOLO model: Torch not compiled with CUDA enabled
+2026-02-16 20:00:32 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:00:32 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:00:32 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:00:32 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:00:32 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}
+2026-02-16 20:07:53 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Found local model: models\person_general_detection\1\best.pt
+2026-02-16 20:07:53 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Loaded model metadata from models\person_general_detection\1\metadata.yaml
+2026-02-16 20:07:53 - yoi.inference - [cfg:dwelltime-rtsp-multi] - WARNING - GPU inference failed, reloading model on CPU for graceful fallback
+2026-02-16 20:07:53 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - YOLO Model loaded: person_general_detection on cpu
+2026-02-16 20:07:53 - yoi.inference - [cfg:dwelltime-rtsp-multi] - INFO - Model classes: {0: 'person'}

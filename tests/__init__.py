@@ -1,0 +1,3 @@
+"""
+YOI tests module
+"""

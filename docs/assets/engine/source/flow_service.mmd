@@ -1,0 +1,29 @@
+graph LR
+    %% Simple service-map only
+    classDef source fill:#ECEFF1,stroke:#607D8B,stroke-width:2px,color:#000000,rx:10,ry:10;
+    classDef app fill:#FFF8E1,stroke:#FFB300,stroke-width:2px,color:#000000,rx:10,ry:10;
+    classDef ai fill:#FCE4EC,stroke:#D81B60,stroke-width:2px,color:#000000,rx:10,ry:10;
+    classDef stream fill:#E0F7FA,stroke:#00ACC1,stroke-width:2px,color:#000000,rx:10,ry:10;
+    classDef out fill:#F3E5F5,stroke:#8E24AA,stroke-width:2px,color:#000000,rx:10,ry:10;
+    classDef spacer fill:transparent,stroke:transparent,color:transparent;
+
+    Input["Video Source<br/>RTSP or MP4"]:::source
+    Engine["YOI Engine Service<br/>Python"]:::app
+    Yolo["Detection Service<br/>Ultralytics YOLO + ONNX Runtime"]:::ai
+    Track["Tracking Service<br/>ByteTrack or Centroid + optional ReID"]:::ai
+    Analytics["Analytics Service<br/>Line Cross, Region Crowd, Dwell Time"]:::ai
+    FFmpeg["Streaming Service<br/>FFmpeg"]:::stream
+    MediaMTX["RTSP Distribution Service<br/>MediaMTX"]:::stream
+    Storage["Data and Artifact Storage<br/>JSON, CSV, Alerts, MP4"]:::out
+
+    Input --> Engine
+    Engine --> Yolo --> Track --> Analytics
+    Analytics --> FFmpeg --> MediaMTX
+    Analytics --> Storage
+
+    %% invisible spacers to keep layout stable (no visible logo boxes)
+    SP1["<br/><br/>"]:::spacer --- Engine
+    SP2["<br/><br/>"]:::spacer --- Yolo
+    SP3["<br/><br/>"]:::spacer --- Track
+    SP4["<br/><br/>"]:::spacer --- FFmpeg
+    SP5["<br/><br/>"]:::spacer --- MediaMTX

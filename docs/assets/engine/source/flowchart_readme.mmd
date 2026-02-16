@@ -1,0 +1,46 @@
+graph TD
+    %% Compact README-friendly version
+    classDef startup fill:#E8EAF6,stroke:#3949AB,stroke-width:2px,color:#1A237E;
+    classDef core fill:#E8F5E9,stroke:#388E3C,stroke-width:2px,color:#1B5E20;
+    classDef insight fill:#F3E5F5,stroke:#7B1FA2,stroke-width:2px,color:#4A148C;
+    classDef output fill:#FFF3E0,stroke:#F57C00,stroke-width:2px,color:#E65100;
+    classDef control fill:#FBE9E7,stroke:#D84315,stroke-width:2px,color:#BF360C;
+
+    A([Start]) --> B[Parse args and register signal]:::startup
+    B --> C[Resolve config and init reader]:::startup
+
+    C --> D{Next frame available}:::core
+    D -- Yes --> E[YOLO inference]:::core
+    E --> F[Tracking ByteTrack or Centroid plus ReID optional]:::core
+    F --> G[Feature engine]:::insight
+
+    G --> G1[Line cross]:::insight
+    G --> G2[Region crowd]:::insight
+    G --> G3[Dwell time]:::insight
+    G1 --> H[Frame analytics summary]:::insight
+    G2 --> H
+    G3 --> H
+
+    G1 --> X{Crossing event}:::control
+    X -- Yes --> O[Line cross event snapshot]:::output
+    X -- No --> H
+
+    H --> I[Annotate frame]:::output
+    I --> J[RTSP push to MediaMTX]:::output
+    I --> K[Save MP4]:::output
+    I --> L[Export JSON CSV log]:::output
+    I --> M[Persist alerts JSONL JSON]:::output
+
+    J --> N{Stop requested or end}:::control
+    K --> N
+    L --> N
+    M --> N
+    O --> N
+
+    N -- No --> D
+    N -- Yes --> P[Graceful cleanup and final export]:::control
+    P --> Q([End])
+
+    B --> S{Signal received}:::control
+    S --> T[request stop and terminate child process]:::control
+    T --> N
