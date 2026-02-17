@@ -10,7 +10,7 @@ from yoi.analytics.analytics import AnalyticsEngine
 from yoi.components.engine_feature_mapping import build_feature_detections
 from yoi.components.engine_output_lifecycle import (
     cleanup_engine,
-    handle_line_cross_events,
+    handle_feature_alert_events,
     initialize_output_engines,
 )
 from yoi.components.video_reader import VideoReader
@@ -124,8 +124,6 @@ class VisionEngine:
     def _init_runtime_state(self) -> None:
         """Initialize per-event runtime state."""
         # State for per-event outputs (images / status / CSV)
-        self._prev_total_in: int = 0
-        self._prev_total_out: int = 0
         self._event_counter: int = 0
         self._last_line_cross_counts: Optional[tuple[int, int, int]] = None
         self._last_feature_signature: Optional[str] = None
@@ -485,7 +483,12 @@ class VisionEngine:
                             )
                             if should_log:
                                 self.logger.info(
-                                    f"Frame {frame_idx} - Line-cross metrics: {metrics}"
+                                    "Frame %s - line_cross in=%s out=%s net=%s active=%s",
+                                    frame_idx,
+                                    current_counts[0],
+                                    current_counts[1],
+                                    current_counts[2],
+                                    int(metrics.get("active_tracks", 0)),
                                 )
                                 self._last_line_cross_counts = current_counts
                         elif metrics.get("feature") == "region_crowd":
@@ -506,7 +509,13 @@ class VisionEngine:
                             )
                             should_log = frame_idx % self._feature_log_every_n_frames == 0
                             if should_log:
-                                self.logger.info(f"Frame {frame_idx} - Feature metrics: {metrics}")
+                                self.logger.info(
+                                    "Frame %s - region_crowd current=%s max=%s inside=%s",
+                                    frame_idx,
+                                    int(metrics.get("total_current", 0)),
+                                    int(metrics.get("total_max", 0)),
+                                    len(inside_track_ids),
+                                )
                                 self._last_feature_signature = signature
                         elif metrics.get("feature") == "dwell_time":
                             inside_track_ids = {
@@ -533,13 +542,23 @@ class VisionEngine:
                             )
                             should_log = frame_idx % self._feature_log_every_n_frames == 0
                             if should_log:
-                                self.logger.info(f"Frame {frame_idx} - Feature metrics: {metrics}")
+                                self.logger.info(
+                                    "Frame %s - dwell_time inside=%s alerted=%s max=%.2fs",
+                                    frame_idx,
+                                    len(inside_track_ids),
+                                    len(alerted_track_ids),
+                                    float(metrics.get("overall_max_dwell_seconds", 0.0) or 0.0),
+                                )
                                 self._last_feature_signature = signature
                         else:
                             signature = str(metrics)
                             should_log = frame_idx % self._feature_log_every_n_frames == 0
                             if should_log:
-                                self.logger.info(f"Frame {frame_idx} - Feature metrics: {metrics}")
+                                self.logger.info(
+                                    "Frame %s - feature=%s metrics_update",
+                                    frame_idx,
+                                    metrics.get("feature", "unknown"),
+                                )
                                 self._last_feature_signature = signature
 
                 # Run analytics
@@ -700,13 +719,14 @@ class VisionEngine:
                             metrics=metrics,
                         )
 
-                    if metrics.get("feature") == "line_cross":
-                        handle_line_cross_events(
-                            engine=self,
-                            frame_idx=frame_idx,
-                            annotated_frame=annotated_frame,
-                            metrics=metrics,
-                        )
+                    handle_feature_alert_events(
+                        engine=self,
+                        frame_idx=frame_idx,
+                        frame=frame,
+                        annotated_frame=annotated_frame,
+                        feature_result=feature_result,
+                        track_bbox_map=track_bbox_map,
+                    )
 
                 # Write to video
                 if self.video_writer:

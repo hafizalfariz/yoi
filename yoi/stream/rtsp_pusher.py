@@ -80,6 +80,8 @@ class RTSPPusher:
         command = [
             "ffmpeg",
             "-y",  # Overwrite output
+            "-loglevel",
+            "warning",
             "-f",
             "rawvideo",
             "-vcodec",
@@ -88,10 +90,15 @@ class RTSPPusher:
             "bgr24",  # OpenCV uses BGR
             "-s",
             f"{self.config.width}x{self.config.height}",
+            "-use_wallclock_as_timestamps",
+            "1",
+            "-fflags",
+            "+genpts",
             "-r",
             str(self.config.fps),
             "-i",
             "-",  # Input from stdin
+            "-an",
             "-c:v",
             self.config.codec,
             "-preset",
@@ -108,6 +115,10 @@ class RTSPPusher:
             "rtsp",
             "-rtsp_transport",
             self.config.rtsp_transport,
+            "-rtsp_flags",
+            "prefer_tcp",
+            "-rw_timeout",
+            "30000000",
             "-muxdelay",
             "0.1",
             "-muxpreload",
@@ -276,7 +287,10 @@ class RTSPPusher:
 
                 # Close stdin to signal end of stream
                 if self.process.stdin:
-                    self.process.stdin.close()
+                    try:
+                        self.process.stdin.close()
+                    except (BrokenPipeError, OSError):
+                        pass
 
                 # Wait for process to finish (with timeout)
                 try:

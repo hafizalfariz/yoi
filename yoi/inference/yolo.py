@@ -19,6 +19,13 @@ try:
 except ImportError:
     HAS_ULTRALYTICS = False
 
+try:
+    import torch
+
+    HAS_TORCH = True
+except ImportError:
+    HAS_TORCH = False
+
 
 class Detection:
     """Single object detection"""
@@ -119,13 +126,23 @@ class YOLOInferencer:
         target_device_env = os.getenv("YOI_TARGET_DEVICE", "").strip().lower()
         if target_device_env == "gpu":
             target_device_env = "cuda"
-        if target_device_env in {"cpu", "cuda", "mps"} and target_device_env != self.device:
+        runtime_profile_env = os.getenv("YOI_RUNTIME_PROFILE", "").strip().lower()
+        runtime_target = target_device_env
+        if not runtime_target:
+            if runtime_profile_env == "gpu":
+                runtime_target = "cuda"
+            elif runtime_profile_env == "cpu":
+                runtime_target = "cpu"
+        if runtime_target in {"cpu", "cuda", "mps"} and runtime_target != self.device:
             self.logger.warning(
-                "Overriding config device '%s' -> '%s' based on runtime profile",
+                "Config device mismatch: config=%s, runtime=%s (env)",
                 self.device,
-                target_device_env,
+                runtime_target,
             )
-            self.device = target_device_env
+            raise RuntimeError(
+                "Config model.device does not match runtime target device. "
+                f"config={self.device}, runtime={runtime_target}"
+            )
         strict_device_env = os.getenv("YOI_STRICT_DEVICE", "0").strip().lower()
         self.strict_device = strict_device_env in {"1", "true", "yes", "on"}
         self.conf_threshold = conf
@@ -150,6 +167,24 @@ class YOLOInferencer:
         self.metadata: Dict = {}
         # Target classes are determined after model/metadata load.
         self.target_classes: List[str] = []
+
+        if self.device == "cuda":
+            cuda_available = bool(HAS_TORCH and torch.cuda.is_available())
+            if not cuda_available:
+                if self.strict_device:
+                    raise RuntimeError(
+                        "Strict GPU mode is enabled but CUDA is unavailable in this runtime"
+                    )
+                self.logger.warning(
+                    "GPU is unavailable in this runtime; falling back to CPU before model selection"
+                )
+                self.device = "cpu"
+
+        if self.device in {"cuda", "mps"} and model_name.lower().endswith(".onnx"):
+            raise RuntimeError(
+                "GPU runtime requires a GPU-native model (.pt/.pth). "
+                f"ONNX model is not allowed for device '{self.device}': {model_name}"
+            )
 
         try:
             # Try to find local model file first
@@ -256,7 +291,7 @@ class YOLOInferencer:
 
         extension_priority = [".onnx", ".pt", ".pth"]
         if self.device in {"cuda", "mps"}:
-            extension_priority = [".pt", ".pth", ".onnx"]
+            extension_priority = [".pt", ".pth"]
 
         model_dirs = [d for d in models_dir.iterdir() if d.is_dir() and d.name == model_name]
 
@@ -264,6 +299,8 @@ class YOLOInferencer:
             return None
 
         model_dir = model_dirs[0]
+
+        onnx_present = bool(list(model_dir.glob("*.onnx")))
 
         # First, support direct files under model directory:
         # models/<model_name>/best.onnx
@@ -278,6 +315,14 @@ class YOLOInferencer:
             direct_model_files.extend(model_dir.glob(f"*{ext}"))
         if direct_model_files:
             return sorted(direct_model_files)[0]
+
+        if self.device in {"cuda", "mps"}:
+            for version_dir in sorted(model_dir.iterdir(), reverse=True):
+                if not version_dir.is_dir():
+                    continue
+                if list(version_dir.glob("*.onnx")):
+                    onnx_present = True
+                    break
 
         # Look for version directories (e.g., "1", "2", etc.)
         for version_dir in sorted(model_dir.iterdir(), reverse=True):
@@ -298,6 +343,12 @@ class YOLOInferencer:
                 model_files.extend(version_dir.glob(f"*{ext}"))
             if model_files:
                 return sorted(model_files)[0]
+
+        if self.device in {"cuda", "mps"} and onnx_present:
+            raise RuntimeError(
+                "GPU runtime requires local model weights in .pt/.pth format, "
+                f"but only ONNX weights were found for model '{model_name}'"
+            )
 
         return None
 

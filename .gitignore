@@ -20,6 +20,8 @@ venv/
 # Runtime artifacts
 logs/**
 !logs/.gitkeep
+yoi/logs/**
+!yoi/logs/.gitkeep
 output/**
 !output/.gitkeep
 input/**

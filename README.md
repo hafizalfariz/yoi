@@ -38,6 +38,9 @@ YOI is a production-grade analytics engine for real-time detection, multi-object
 
 ![YOI Service Map](docs/assets/engine/flowcharts/yoi_service.png)
 
+Flowchart detail (service map + full runtime flow) and explanations are documented in:
+- [docs/documentation/runtime-flow.md](docs/documentation/runtime-flow.md)
+
 ## Analytics Features
 
 - Line Crossing: Counts directional crossing events (`in`, `out`, and net count) using tracked object trajectories against configured lines.
@@ -102,15 +105,9 @@ Tracking is identity-based (ByteTrack-first with centroid fallback, optional lig
 
 ## Devtools Workflow
 
-Use `yoi/devtools/dev.ps1` to avoid manual compose command churn.
+Devtools command details are maintained in docs only:
 
-- Fast CPU run (no build): `./yoi/devtools/dev.ps1 -Action up-cpu`
-- Fast GPU run (no build): `./yoi/devtools/dev.ps1 -Action up-gpu`
-- Rebuild CPU image when needed: `./yoi/devtools/dev.ps1 -Action build-cpu`
-- Rebuild GPU image when needed: `./yoi/devtools/dev.ps1 -Action build-gpu`
-- Run local runtime without Docker (use active config): `./yoi/devtools/dev.ps1 -Action run-local -Config configs/app/dwelltime.yaml`
-
-Tip: for day-to-day coding, use `up-cpu`/`up-gpu` and rebuild only after dependency or Dockerfile changes.
+- [Devtools Command Mapping](docs/documentation/devtools-command-mapping.md)
 
 ### Config Builder Commands
 
@@ -142,6 +139,7 @@ Tip: for day-to-day coding, use `up-cpu`/`up-gpu` and rebuild only after depende
 
 - Service Map Image: `docs/assets/engine/flowcharts/yoi_service.png`
 - Detailed Runtime Flowchart: `docs/assets/engine/flowcharts/yoi_flowchart.png`
+- Flowchart explanation and reading guide: [docs/documentation/runtime-flow.md](docs/documentation/runtime-flow.md)
 
 ## Documentation
 
@@ -153,6 +151,7 @@ Detailed guides are available in:
 - [docs/documentation/configuration-builder.md](docs/documentation/configuration-builder.md)
 - [docs/documentation/runtime-flow.md](docs/documentation/runtime-flow.md)
 - [docs/documentation/operations.md](docs/documentation/operations.md)
+- [docs/documentation/devtools-command-mapping.md](docs/documentation/devtools-command-mapping.md)
 
 ### Audience Guide
 

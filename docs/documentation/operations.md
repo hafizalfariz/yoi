@@ -22,6 +22,11 @@ This document provides practical runbooks for starting, monitoring, validating, 
 - MediaMTX log checks are optional and executed separately.
 - Optional runtime limit is available via `YOI_MAX_INFERENCE_SECONDS`.
 - Runtime may gracefully fall back from GPU to CPU when `YOI_STRICT_DEVICE=0` and GPU initialization fails.
+- Resource caps can be controlled via `.env` using:
+  - percent policy: `CPU_LIMIT_PERCENT`, `GPU_CPU_LIMIT_PERCENT` (`10..100` or `max`)
+  - memory percent policy: `MEMORY_LIMIT_PERCENT` (`10..100` or `max`, resolved by `yoi/devtools/dev.ps1` on Windows or `yoi/devtools/dev.sh` on Linux/macOS)
+  - runtime auto-calculates thread/core usage from percent values
+- `.env.example` is organized into numbered sections (Core, Resource, Paths/Config, Device, Inference, RTSP, Logging) to simplify operator handoff.
 
 ## Pre-Run Checklist
 
@@ -125,8 +130,12 @@ Model resolution policy:
 
 ## Quality and Validation
 
-- Helper QA: `./yoi/devtools/dev.ps1 -Action qa`
-- Helper QA with fix: `./yoi/devtools/dev.ps1 -Action qa-fix`
+- Helper QA (Windows): `./yoi/devtools/dev.ps1 -Action qa`
+- Helper QA (Linux/macOS): `./yoi/devtools/dev.sh --action qa`
+- Helper QA with fix (Windows): `./yoi/devtools/dev.ps1 -Action qa-fix`
+- Helper QA with fix (Linux/macOS): `./yoi/devtools/dev.sh --action qa-fix`
+- Show percent->core mapping (Windows): `./yoi/devtools/dev.ps1 -Action limits`
+- Show percent->core mapping (Linux/macOS): `./yoi/devtools/dev.sh --action limits`
 - Direct Ruff: `D:/AssistXenterprise/yoi/.venv/Scripts/python.exe -m ruff check yoi src config_builder tests --select I,F401,F841`
 - Direct Pytest: `D:/AssistXenterprise/yoi/.venv/Scripts/python.exe -m pytest -q`
 
@@ -144,3 +153,4 @@ Model resolution policy:
 - [Architecture](architecture.md)
 - [Runtime Flow](runtime-flow.md)
 - [Configuration Builder](configuration-builder.md)
+- [Devtools Command Mapping](devtools-command-mapping.md)

@@ -15,13 +15,25 @@ This document explains the operational flow of the YOI engine, from startup to g
 
 ## Flowchart Assets
 
+### 1) YOI Service Map
+
+This diagram shows **service boundaries** and how data moves between external source, engine modules, streaming layer, and storage.
+
 ![YOI Service Map](../assets/engine/flowcharts/yoi_service.png)
+
+Use this map when reviewing integration points (input source, MediaMTX, output artifacts, and service ownership).
+
+### 2) YOI Full Runtime Flowchart
+
+This diagram shows **internal engine execution flow** from startup, config resolution, frame loop, analytics, output, until graceful shutdown.
 
 ![YOI Full Flowchart](../assets/engine/flowcharts/yoi_flowchart.png)
 
+Use this flowchart when debugging runtime stages, ordering of processing steps, or shutdown behavior.
+
 ## Service-Level Flow
 
-The service map represents integration boundaries between core services:
+The **YOI Service Map** represents integration boundaries between core services:
 
 1. Video Source provides RTSP or MP4 input.
 2. YOI Engine coordinates inference, tracking, and analytics.
@@ -34,7 +46,7 @@ The service map represents integration boundaries between core services:
 
 ## Main Runtime Flow
 
-The detailed flowchart represents execution stages inside the engine process.
+The **YOI Full Runtime Flowchart** represents execution stages inside the engine process.
 
 Read the flow from startup to shutdown in stage order below.
 

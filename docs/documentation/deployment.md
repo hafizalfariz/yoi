@@ -13,14 +13,20 @@ This guide provides a focused deployment flow for production-like CPU/GPU runtim
 1. Copy template file:
    - `.env.example` -> `.env`
 2. Adjust deployment values in `.env`:
-   - resource limits (`CPU_LIMIT`, `MEMORY_LIMIT`)
-   - path mounts (`INPUT_PATH`, `OUTPUT_PATH`, `LOGS_PATH`, `MODELS_PATH`, `CONFIGS_PATH`)
-   - runtime guard (`YOI_MAX_INFERENCE_SECONDS`)
+  - Section 2 (Resource Policy): `CPU_LIMIT_PERCENT`, `GPU_CPU_LIMIT_PERCENT`, `MEMORY_LIMIT_PERCENT`
+  - Section 3 (Paths/Config): `INPUT_PATH`, `OUTPUT_PATH`, `LOGS_PATH`, `MODELS_PATH`, `CONFIGS_PATH`, `CONFIG_DIR`
+  - Section 4 (Device Policy): `YOI_STRICT_DEVICE`
+  - Section 5 (Inference): `YOI_MAX_INFERENCE_SECONDS`, `YOI_INFER_EVERY_N_FRAMES`
+  - Section 6 (RTSP): `YOI_RTSP_OUTPUT_FPS`, `YOI_RTSP_BITRATE`, `YOI_RTSP_PRESET`
 
 Notes:
 
 - Runtime limit uses seconds (`YOI_MAX_INFERENCE_SECONDS`), not minutes.
 - Keep `YOI_MAX_INFERENCE_SECONDS=0` to disable auto-stop.
+- Percent policy supports `10..100` or `max` and runtime auto-calculates thread/core usage.
+- Memory policy uses `MEMORY_LIMIT_PERCENT` (`10..100` or `max`) when using `yoi/devtools/dev.ps1` (Windows) or `yoi/devtools/dev.sh` (Linux/macOS).
+- If `MEMORY_LIMIT_PERCENT` is empty, compose service default `mem_limit` is used.
+- `.env.example` is grouped by numbered sections for faster editing and safer review.
 
 ## 2) Runtime Assets
 

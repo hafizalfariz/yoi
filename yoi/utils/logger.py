@@ -111,8 +111,9 @@ class YOILogger:
         # File log directory priority:
         # 1) YOI_LOG_DIR (explicit)
         # 2) LOGS_PATH/engine
-        # 3) package-local yoi/logs
-        package_root = Path(__file__).resolve().parents[1]
+        # 3) project-root/logs/engine
+        module_path = Path(__file__).resolve()
+        project_root = module_path.parents[2]
         explicit_log_dir = os.getenv("YOI_LOG_DIR")
         logs_path = os.getenv("LOGS_PATH")
 
@@ -121,7 +122,7 @@ class YOILogger:
         elif logs_path:
             self.log_dir = Path(logs_path) / "engine"
         else:
-            self.log_dir = package_root / "logs"
+            self.log_dir = project_root / "logs" / "engine"
 
         self.log_dir.mkdir(parents=True, exist_ok=True)
         self._initialized = True

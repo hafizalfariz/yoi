@@ -34,7 +34,7 @@ def test_yolo_init_falls_back_to_cpu_when_cuda_unavailable(monkeypatch):
     )
 
     assert inferencer.device == "cpu"
-    assert inferencer._fallback_to_cpu_attempted is True
+    assert inferencer._fallback_to_cpu_attempted is False
 
 
 def test_yolo_init_raises_in_strict_mode_when_cuda_unavailable(monkeypatch):
@@ -52,8 +52,8 @@ def test_yolo_init_raises_in_strict_mode_when_cuda_unavailable(monkeypatch):
             iou=0.7,
             classes=["person"],
         )
-    except AssertionError as exc:
+    except RuntimeError as exc:
         raised = True
-        assert "Torch not compiled with CUDA enabled" in str(exc)
+        assert "Strict GPU mode is enabled but CUDA is unavailable" in str(exc)
 
     assert raised is True

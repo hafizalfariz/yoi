@@ -43,6 +43,10 @@ Use this checklist before running any YOI profile (`cpu`, `gpu`, or `builder`).
 - [ ] Docker Engine is running
 - [ ] Required ports are available
 - [ ] Optional `.env` values are adjusted (paths, limits, tuning)
+- [ ] Resource cap policy is clear:
+	- percent caps: `CPU_LIMIT_PERCENT` / `GPU_CPU_LIMIT_PERCENT` (`10..100` or `max`)
+	- memory percent: `MEMORY_LIMIT_PERCENT` (`10..100` or `max`, via `yoi/devtools/dev.ps1` or `yoi/devtools/dev.sh`)
+	- runtime auto-calculates thread/core usage from percent values
 - [ ] Optional max runtime is set when needed: `YOI_MAX_INFERENCE_SECONDS=<seconds>`
 
 ## 5) Startup Commands

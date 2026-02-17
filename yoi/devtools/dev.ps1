@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('up','up-cpu','up-gpu','build-cpu','build-gpu','run-local','up-builder','down-builder','restart','logs','watch','cleanup','qa','qa-fix')]
+    [ValidateSet('up','up-cpu','up-gpu','build-cpu','build-gpu','run-local','up-builder','down-builder','restart','logs','watch','cleanup','qa','qa-fix','limits')]
     [string]$Action = 'up',
     [ValidateSet('cpu','gpu')]
     [string]$Profile = 'cpu',
@@ -45,6 +45,170 @@ function Get-DotEnvValue {
         $value = $value.Trim('"')
     }
     return $value
+}
+
+function Get-ConfigValue {
+    param(
+        [string]$Key,
+        [string]$Default = ''
+    )
+
+    $envValue = [System.Environment]::GetEnvironmentVariable($Key)
+    if (-not [string]::IsNullOrWhiteSpace($envValue)) {
+        return $envValue
+    }
+
+    return Get-DotEnvValue -Key $Key -Default $Default
+}
+
+function Get-LogicalCoreCount {
+    return [int][System.Environment]::ProcessorCount
+}
+
+function Get-TotalMemoryMb {
+    try {
+        $os = Get-CimInstance -ClassName Win32_OperatingSystem -ErrorAction Stop
+        $totalKb = [double]$os.TotalVisibleMemorySize
+        if ($totalKb -gt 0) {
+            return [int][math]::Floor($totalKb / 1024)
+        }
+    }
+    catch {
+        # Fallback below
+    }
+
+    try {
+        $cs = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+        $totalBytes = [double]$cs.TotalPhysicalMemory
+        if ($totalBytes -gt 0) {
+            return [int][math]::Floor($totalBytes / 1MB)
+        }
+    }
+    catch {
+        # Ignore and fail below
+    }
+
+    throw 'Cannot detect total system memory for MEMORY_LIMIT_PERCENT conversion'
+}
+
+function Convert-PercentToCpuLimit {
+    param(
+        [string]$PercentRaw,
+        [int]$CoreCount
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PercentRaw)) {
+        return $null
+    }
+
+    $normalized = $PercentRaw.Trim().ToLower()
+    if ($normalized -eq 'max') {
+        return [math]::Round([double]$CoreCount, 1)
+    }
+    if ($normalized.EndsWith('%')) {
+        $normalized = $normalized.TrimEnd('%')
+    }
+
+    $percent = 0.0
+    if (-not [double]::TryParse($normalized, [ref]$percent)) {
+        throw "Invalid percent value: '$PercentRaw'"
+    }
+
+    if ($percent -lt 10 -or $percent -gt 100) {
+        throw "Percent must be between 10 and 100 (or 'max'), got '$PercentRaw'"
+    }
+
+    $limit = ($CoreCount * $percent) / 100.0
+    return [math]::Round($limit, 1)
+}
+
+function Convert-PercentToMemoryLimit {
+    param(
+        [string]$PercentRaw,
+        [int]$TotalMemoryMb
+    )
+
+    if ([string]::IsNullOrWhiteSpace($PercentRaw)) {
+        return $null
+    }
+
+    $normalized = $PercentRaw.Trim().ToLower()
+    if ($normalized.EndsWith('%')) {
+        $normalized = $normalized.TrimEnd('%')
+    }
+
+    $percent = 0.0
+    if ($normalized -eq 'max') {
+        $percent = 100.0
+    }
+    elseif (-not [double]::TryParse($normalized, [ref]$percent)) {
+        throw "Invalid MEMORY_LIMIT_PERCENT value: '$PercentRaw'"
+    }
+
+    if ($percent -lt 10 -or $percent -gt 100) {
+        throw "MEMORY_LIMIT_PERCENT must be between 10 and 100 (or 'max'), got '$PercentRaw'"
+    }
+
+    $limitMb = [int][math]::Max(512, [math]::Floor(($TotalMemoryMb * $percent) / 100.0))
+    return "${limitMb}m"
+}
+
+function Resolve-ComposeMemoryLimit {
+    $percentRaw = Get-ConfigValue -Key 'MEMORY_LIMIT_PERCENT' -Default ''
+
+    if ([string]::IsNullOrWhiteSpace($percentRaw)) {
+        Remove-Item Env:MEMORY_LIMIT -ErrorAction SilentlyContinue
+        Write-Host "[dev] MEMORY_LIMIT_PERCENT is empty; using compose default mem_limit"
+        return
+    }
+
+    $totalMb = Get-TotalMemoryMb
+    $resolved = Convert-PercentToMemoryLimit -PercentRaw $percentRaw -TotalMemoryMb $totalMb
+    $env:MEMORY_LIMIT = $resolved
+    Write-Host "[dev] Resolved MEMORY_LIMIT from MEMORY_LIMIT_PERCENT=$percentRaw => $resolved (host=${totalMb}m)"
+}
+
+function Show-CpuLimitTable {
+    $coreCount = Get-LogicalCoreCount
+    Write-Host "[dev] Logical cores detected: $coreCount"
+    Write-Host "[dev] Percent -> CPU limit (cores)"
+
+    for ($p = 10; $p -le 100; $p += 10) {
+        $limit = Convert-PercentToCpuLimit -PercentRaw "$p" -CoreCount $coreCount
+        Write-Host ("[dev] {0,3}% => {1}" -f $p, $limit)
+    }
+
+    $maxLimit = Convert-PercentToCpuLimit -PercentRaw 'max' -CoreCount $coreCount
+    Write-Host "[dev] max => $maxLimit"
+}
+
+function Apply-LocalThreadLimitsFromPercent {
+    param(
+        [ValidateSet('cpu','gpu')]
+        [string]$TargetProfile
+    )
+
+    $coreCount = Get-LogicalCoreCount
+    $percentKey = if ($TargetProfile -eq 'gpu') { 'GPU_CPU_LIMIT_PERCENT' } else { 'CPU_LIMIT_PERCENT' }
+    $percentRaw = Get-ConfigValue -Key $percentKey -Default ''
+
+    if ([string]::IsNullOrWhiteSpace($percentRaw)) {
+        return
+    }
+
+    $threadBudget = [int][math]::Max(
+        1,
+        [math]::Floor((Convert-PercentToCpuLimit -PercentRaw $percentRaw -CoreCount $coreCount))
+    )
+    $opencvThreads = [int][math]::Max(1, [math]::Min(4, [math]::Floor($threadBudget / 2)))
+
+    $env:OMP_NUM_THREADS = "$threadBudget"
+    $env:OPENBLAS_NUM_THREADS = "$threadBudget"
+    $env:MKL_NUM_THREADS = "$threadBudget"
+    $env:NUMEXPR_NUM_THREADS = "$threadBudget"
+    $env:OPENCV_FOR_THREADS_NUM = "$opencvThreads"
+
+    Write-Host "[dev] Local thread cap from $percentKey=$percentRaw => OMP/BLAS/MKL/NUMEXPR=$threadBudget, OpenCV=$opencvThreads"
 }
 
 function Invoke-Compose {
@@ -95,6 +259,8 @@ function Start-Profile {
         $upArgs += '--build'
     }
 
+    Resolve-ComposeMemoryLimit
+
     $maxAttempts = 3
     for ($attempt = 1; $attempt -le $maxAttempts; $attempt++) {
         try {
@@ -137,6 +303,8 @@ function Start-LocalRuntime {
         $env:YOI_TARGET_DEVICE = if ($TargetProfile -eq 'gpu') { 'cuda' } else { 'cpu' }
     }
 
+    Apply-LocalThreadLimitsFromPercent -TargetProfile $TargetProfile
+
     Write-Host "[dev] Local runtime profile: $TargetProfile (target device: $env:YOI_TARGET_DEVICE)"
     Write-Host "[dev] Local runtime config: $resolvedConfig"
     Invoke-PythonCommand -CommandArgs @('src/app/main.py', '--config', $resolvedConfig)
@@ -144,8 +312,7 @@ function Start-LocalRuntime {
 
 function Cleanup-LegacyLogs {
     $patterns = @(
-        (Join-Path $repoRoot 'logs\ffmpeg_startup_*.log'),
-        (Join-Path $repoRoot 'yoi\logs\ffmpeg_startup_*.log')
+        (Join-Path $repoRoot 'logs\ffmpeg_startup_*.log')
     )
 
     foreach ($pattern in $patterns) {
@@ -212,6 +379,10 @@ try {
             Invoke-PythonCommand -CommandArgs @('-m', 'ruff', 'check', 'yoi', 'src', 'config_builder', 'tests', '--select', 'I,F401,F841')
             Invoke-PythonCommand -CommandArgs @('-m', 'pytest', '-q')
             Write-Host '[dev] QA-FIX completed (ruff --fix + ruff + pytest)'
+        }
+
+        'limits' {
+            Show-CpuLimitTable
         }
 
         'up' {

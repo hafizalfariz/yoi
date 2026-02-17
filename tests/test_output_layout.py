@@ -1,8 +1,14 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import cv2
+import numpy as np
+
 from yoi.components import engine_output_lifecycle as output_lifecycle
-from yoi.components.engine_output_lifecycle import _resolve_annotated_output_path
+from yoi.components.engine_output_lifecycle import (
+    _resolve_annotated_output_path,
+    handle_feature_alert_events,
+)
 
 
 class _DummyInput:
@@ -160,3 +166,88 @@ def test_logs_config_folder_and_csv_names_are_respected(tmp_path, monkeypatch):
     assert engine.status_dir.name == "status_custom"
     assert engine.data_csv_path.name == "event_custom.csv"
     assert engine.data_csv_path.exists()
+
+
+def test_feature_alert_event_writes_data_image_csv_and_skips_status_for_video(tmp_path):
+    class _DummyLogger:
+        def info(self, *args, **kwargs):
+            return None
+
+        def warning(self, *args, **kwargs):
+            return None
+
+        def error(self, *args, **kwargs):
+            return None
+
+    class _Det:
+        x1 = 10
+        y1 = 10
+        x2 = 60
+        y2 = 80
+
+    output_dir = tmp_path / "output"
+    image_dir = output_dir / "image"
+    data_dir = output_dir / "data"
+    status_dir = output_dir / "status"
+    for directory in (output_dir, image_dir, data_dir, status_dir):
+        directory.mkdir(parents=True, exist_ok=True)
+
+    data_csv = output_dir / "data.csv"
+    data_csv.write_text("image_id,timestamp,feature,status,data_path,image_path\n", encoding="utf-8")
+
+    engine = SimpleNamespace(
+        config=SimpleNamespace(
+            config_name="cfg-a",
+            cctv_id="office",
+            input=SimpleNamespace(get_source_path=lambda: "input/demo.mp4"),
+        ),
+        logger=_DummyLogger(),
+        output_dir=output_dir,
+        image_dir=image_dir,
+        data_dir=data_dir,
+        status_dir=status_dir,
+        data_csv_path=data_csv,
+        _event_counter=0,
+        _event_status_enabled=False,
+    )
+
+    frame = np.zeros((120, 160, 3), dtype=np.uint8)
+    frame[10:80, 10:60] = 255
+
+    feature_result = SimpleNamespace(
+        feature_type="line_cross",
+        metrics={"feature": "line_cross", "total_in": 1, "total_out": 0},
+        alerts=[{"type": "line_crossing_in", "track_id": 7, "line_id": 1}],
+    )
+
+    handle_feature_alert_events(
+        engine=engine,
+        frame_idx=12,
+        frame=frame,
+        annotated_frame=frame,
+        feature_result=feature_result,
+        track_bbox_map={7: _Det()},
+    )
+
+    data_files = list(data_dir.glob("*.json"))
+    image_files = list(image_dir.glob("*.jpg"))
+    status_files = list(status_dir.glob("*.json"))
+
+    assert len(data_files) == 1
+    assert len(image_files) == 1
+    assert len(status_files) == 0
+
+    image = cv2.imread(str(image_files[0]))
+    assert image is not None
+    assert image.shape[0] < frame.shape[0]
+    assert image.shape[1] < frame.shape[1]
+
+    payload = data_files[0].read_text(encoding="utf-8")
+    assert '"feature": "line_cross"' in payload
+    assert '"warning": "line_crossing_in"' in payload
+    assert '"track_id": 7' in payload
+
+    csv_lines = data_csv.read_text(encoding="utf-8").splitlines()
+    assert len(csv_lines) == 2
+    assert "line_cross" in csv_lines[1]
+    assert "line_crossing_in" in csv_lines[1]

@@ -4,13 +4,14 @@ YOI Vision Engine - Main Entry Point
 
 import argparse
 import copy
+import math
 import os
 import signal
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import List, Tuple
+from typing import List, Optional, Tuple
 
 ROOT_DIR = Path(__file__).resolve().parents[2]
 
@@ -26,6 +27,49 @@ from yoi.utils.logger import logger_service  # noqa: E402
 _ACTIVE_ENGINE: VisionEngine | None = None
 _SHUTDOWN_REQUESTED = False
 _ACTIVE_CHILD_PROCESSES: list[subprocess.Popen] = []
+
+
+def _parse_percent_value(raw: str) -> float | None:
+    value = str(raw or "").strip().lower()
+    if not value:
+        return None
+    if value == "max":
+        return 100.0
+    if value.endswith("%"):
+        value = value[:-1].strip()
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    if parsed < 10 or parsed > 100:
+        return None
+    return parsed
+
+
+def _apply_auto_percent_thread_limits(logger) -> None:
+    runtime_profile, _ = _resolve_runtime_profile()
+    percent_env_key = "GPU_CPU_LIMIT_PERCENT" if runtime_profile == "gpu" else "CPU_LIMIT_PERCENT"
+    percent_value = _parse_percent_value(os.getenv(percent_env_key, ""))
+
+    if percent_value is None:
+        return
+
+    logical_cores = os.cpu_count() or 1
+    target_threads = max(1, int(math.floor((logical_cores * percent_value) / 100.0)))
+
+    os.environ["OMP_NUM_THREADS"] = str(target_threads)
+    os.environ["OPENBLAS_NUM_THREADS"] = str(target_threads)
+    os.environ["MKL_NUM_THREADS"] = str(target_threads)
+    os.environ["NUMEXPR_NUM_THREADS"] = str(target_threads)
+    os.environ["OPENCV_FOR_THREADS_NUM"] = str(max(1, min(target_threads, 8)))
+
+    logger.info(
+        "Auto thread sizing: %s=%s -> logical_cores=%s, target_threads=%s",
+        percent_env_key,
+        os.getenv(percent_env_key),
+        logical_cores,
+        target_threads,
+    )
 
 
 def _resolve_runtime_profile() -> Tuple[str, str]:
@@ -44,6 +88,84 @@ def _resolve_runtime_profile() -> Tuple[str, str]:
         return "cpu", "YOI_TARGET_DEVICE"
 
     return "unknown", "default"
+
+
+def _normalize_device_label(raw_device: Optional[str]) -> str:
+    """Normalize device label to canonical runtime values."""
+    normalized = str(raw_device or "").strip().lower()
+    if normalized == "gpu":
+        return "cuda"
+    if normalized in {"cpu", "cuda", "mps"}:
+        return normalized
+    return ""
+
+
+def _resolve_runtime_target_device() -> Tuple[str, str]:
+    """Resolve canonical runtime target device and source env label."""
+    target_device = _normalize_device_label(os.getenv("YOI_TARGET_DEVICE", ""))
+    if target_device:
+        return target_device, "YOI_TARGET_DEVICE"
+
+    runtime_profile = os.getenv("YOI_RUNTIME_PROFILE", "").strip().lower()
+    if runtime_profile == "gpu":
+        return "cuda", "YOI_RUNTIME_PROFILE"
+    if runtime_profile == "cpu":
+        return "cpu", "YOI_RUNTIME_PROFILE"
+
+    return "", "default"
+
+
+def _get_config_model_device(config_path: Path, logger) -> str:
+    """Load config and return canonical model device value (or empty when unavailable)."""
+    try:
+        config = _load_config_from_path(config_path)
+    except Exception as exc:
+        logger.warning("Failed reading model.device from %s: %s", config_path, exc)
+        return ""
+
+    raw_device = getattr(getattr(config, "model", None), "device", "")
+    normalized = _normalize_device_label(raw_device)
+    if not normalized:
+        logger.warning(
+            "Config %s has unsupported model.device '%s'",
+            config_path,
+            raw_device,
+        )
+    return normalized
+
+
+def _ensure_config_runtime_device_match(config_path: Path, logger) -> bool:
+    """Return False when config model.device does not match runtime target device."""
+    runtime_device, runtime_source = _resolve_runtime_target_device()
+    if not runtime_device:
+        return True
+
+    config_device = _get_config_model_device(config_path, logger)
+    if not config_device:
+        logger.error(
+            "Cannot determine model.device for config %s while runtime device is '%s'",
+            config_path,
+            runtime_device,
+        )
+        return False
+
+    if config_device != runtime_device:
+        logger.warning(
+            "Config device mismatch: config=%s (from %s), runtime=%s (from %s)",
+            config_device,
+            config_path,
+            runtime_device,
+            runtime_source,
+        )
+        logger.error(
+            "Refusing to run config %s because model.device '%s' does not match runtime '%s'",
+            config_path,
+            config_device,
+            runtime_device,
+        )
+        return False
+
+    return True
 
 
 def _signal_name(signum: int) -> str:
@@ -269,6 +391,7 @@ def resolve_default_configs(logger) -> List[Path]:
         if candidate.exists():
             logger.info(f"Using YOI_CONFIG_FILE in CONFIG_DIR: {candidate}")
             return [candidate]
+        logger.warning("YOI_CONFIG_FILE not found in CONFIG_DIR: %s", candidate)
     else:
         candidate = config_dir / "config.yaml"
 
@@ -277,16 +400,67 @@ def resolve_default_configs(logger) -> List[Path]:
         list(config_dir.glob("*.yaml")) + list(config_dir.glob("*.yml")),
         key=lambda path: path.name.lower(),
     )
+
     if yaml_files:
+        runtime_device, runtime_source = _resolve_runtime_target_device()
+
         if len(yaml_files) == 1:
             logger.info(f"Using single YAML in {config_dir}: {yaml_files[0]}")
-        else:
+            return yaml_files
+
+        logger.info(
+            "Multiple YAML configs found in %s; detected (%s)",
+            config_dir,
+            ", ".join(path.name for path in yaml_files),
+        )
+
+        if not runtime_device:
             logger.info(
-                "Multiple YAML configs found in %s; running all (%s)",
-                config_dir,
+                "No runtime device filter set; running all detected configs (%s)",
                 ", ".join(path.name for path in yaml_files),
             )
-        return yaml_files
+            return yaml_files
+
+        logger.info(
+            "Auto-detect device filter active: runtime=%s (from %s)",
+            runtime_device,
+            runtime_source,
+        )
+
+        selected_configs: List[Path] = []
+        skipped_configs: List[str] = []
+        for cfg_path in yaml_files:
+            cfg_device = _get_config_model_device(cfg_path, logger)
+            if not cfg_device:
+                skipped_configs.append(f"{cfg_path.name}(unknown)")
+                continue
+            if cfg_device == runtime_device:
+                selected_configs.append(cfg_path)
+            else:
+                skipped_configs.append(f"{cfg_path.name}({cfg_device})")
+
+        if selected_configs:
+            logger.info(
+                "Auto-detect selected configs (%s): %s",
+                len(selected_configs),
+                ", ".join(path.name for path in selected_configs),
+            )
+        if skipped_configs:
+            logger.warning(
+                "Auto-detect skipped configs due to device mismatch (%s): %s",
+                len(skipped_configs),
+                ", ".join(skipped_configs),
+            )
+
+        if not selected_configs:
+            logger.error(
+                "No compatible configs found for runtime device '%s' in %s",
+                runtime_device,
+                config_dir,
+            )
+            return []
+
+        return selected_configs
 
     # Nothing found; return path where we expected the convention file
     logger.error(f"No config YAML found in {config_dir}")
@@ -374,11 +548,40 @@ def run_configs_in_parallel(config_paths: List[Path], logger) -> int:
         worker_limit = len(config_paths)
 
     worker_limit = max(1, min(worker_limit, len(config_paths)))
+
+    auto_tune_parallel_threads = (
+        os.getenv("YOI_AUTO_TUNE_PARALLEL_THREADS", "1").strip().lower()
+        in {"1", "true", "yes", "on"}
+    )
+
+    omp_total_raw = os.getenv("OMP_NUM_THREADS", "").strip()
+    try:
+        omp_total = int(omp_total_raw) if omp_total_raw else int(os.cpu_count() or worker_limit)
+    except ValueError:
+        omp_total = int(os.cpu_count() or worker_limit)
+
+    opencv_total_raw = os.getenv("OPENCV_FOR_THREADS_NUM", "").strip()
+    try:
+        opencv_total = int(opencv_total_raw) if opencv_total_raw else worker_limit
+    except ValueError:
+        opencv_total = worker_limit
+
+    per_worker_omp = max(1, omp_total // worker_limit)
+    per_worker_opencv = max(1, opencv_total // worker_limit)
+
     logger.info(
         "Parallel config runner using up to %s worker(s) for %s config(s)",
         worker_limit,
         len(config_paths),
     )
+    if auto_tune_parallel_threads and worker_limit > 1:
+        logger.info(
+            "Parallel thread auto-tune enabled: OMP %s->%s per worker, OpenCV %s->%s per worker",
+            omp_total,
+            per_worker_omp,
+            opencv_total,
+            per_worker_opencv,
+        )
 
     remaining = list(config_paths)
     failed: List[Tuple[Path, int]] = []
@@ -400,6 +603,12 @@ def run_configs_in_parallel(config_paths: List[Path], logger) -> int:
                 proc_env = os.environ.copy()
                 proc_env["YOI_LOG_CONFIG_TAG"] = config_path.stem
                 proc_env["YOI_LOG_FILE_SUFFIX"] = config_path.stem
+                if auto_tune_parallel_threads and worker_limit > 1:
+                    proc_env["OMP_NUM_THREADS"] = str(per_worker_omp)
+                    proc_env["OPENBLAS_NUM_THREADS"] = str(per_worker_omp)
+                    proc_env["MKL_NUM_THREADS"] = str(per_worker_omp)
+                    proc_env["NUMEXPR_NUM_THREADS"] = str(per_worker_omp)
+                    proc_env["OPENCV_FOR_THREADS_NUM"] = str(per_worker_opencv)
                 logger.info(f"Launching parallel run for config: {config_path}")
                 proc = subprocess.Popen(cmd, cwd=str(ROOT_DIR), env=proc_env)
                 processes.append((config_path, proc))
@@ -442,6 +651,7 @@ def main():
     _SHUTDOWN_REQUESTED = False
     _ACTIVE_ENGINE = None
     _register_signal_handlers(logger)
+    _apply_auto_percent_thread_limits(logger)
 
     try:
         # Log startup information
@@ -484,6 +694,9 @@ def main():
                 logger.error(f"Config file not found: {config_path}")
                 return 1
 
+            if not _ensure_config_runtime_device_match(config_path, logger):
+                return 1
+
             # Validate config
             config_ok = validate_config(str(config_path), logger)
             if not config_ok:
@@ -522,6 +735,10 @@ def main():
             # No explicit arguments: run all default YAML configs
             config_paths = resolve_default_configs(logger)
 
+            if not config_paths:
+                logger.error("STEP 2/4 - CONFIG FAILED (no compatible config for active runtime)")
+                return 1
+
             if len(config_paths) > 1:
                 logger.info("STEP 2/4 - CONFIG OK (default resolver)")
                 logger.info(
@@ -533,6 +750,9 @@ def main():
             for config_path in config_paths:
                 if not config_path.exists():
                     logger.error(f"Default config file not found: {config_path}")
+                    return 1
+
+                if not _ensure_config_runtime_device_match(config_path, logger):
                     return 1
 
                 config_ok = validate_config(str(config_path), logger)
